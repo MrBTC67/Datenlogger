@@ -8,17 +8,12 @@
         .container { max-width: 1000px; margin: auto; display: flex; flex-direction: column; }
         .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .card { background: #1e1e1e; padding: 20px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: all 0.5s ease; }
-        
         .card h3 { margin: 0 0 8px 0; font-size: 1.2em; }
         .val { font-size: 2.2em; font-weight: bold; }
-        
         .c-temp h3, #currTemp { color: var(--color-temp); }
         .c-hum h3, #currHum { color: var(--color-hum); }
         .c-abs h3, #currAbs { color: var(--color-abs); }
-        
-        /* Standardfarbe Taupunkt */
         .c-dew h3, #currDew { color: #555; }
-
         .chart-container { background: #1e1e1e; padding: 15px; border-radius: 12px; height: 400px; width: 100%; box-sizing: border-box; }
         .controls { margin-top: 20px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; background: #1e1e1e; padding: 20px; border-radius: 12px; }
         .control-group { display: flex; flex-direction: column; align-items: flex-start; }
@@ -38,7 +33,17 @@
     <div class="chart-container"><canvas id="astroChart"></canvas></div>
     <div class="controls">
         <div class="control-group"><label>Sitzung:</label><select id="sessionSelect" onchange="updateData()"><option value="">Lade...</option></select></div>
-        <div class="control-group"><label>Datenpunkte:</label><select id="limitSelect" onchange="updateData()"><option value="50">50</option><option value="100" selected>100</option><option value="500">500</option><option value="1000">1000</option></select></div>
+        <div class="control-group">
+            <label>Datenpunkte:</label>
+            <select id="limitSelect" onchange="updateData()">
+                <option value="50">50</option>
+                <option value="100" selected>100</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
+                <option value="2000">2000</option>
+                <option value="5000">5000</option>
+            </select>
+        </div>
     </div>
 </div>
 
@@ -71,17 +76,11 @@
 
     function updateDewColor(t, dp) {
         const delta = t - dp;
-        const card = document.getElementById('dewCard');
         const val = document.getElementById('currDew');
-        const title = card.querySelector('h3');
-        let color = "#555555"; // Dunkelgrau
-
-        if (delta <= 2) {
-            color = "#ff0000"; // Rot
-        } else if (delta <= 5) {
-            color = "#ff9800"; // Orange
-        }
-
+        const title = document.querySelector('.c-dew h3');
+        let color = "#555555";
+        if (delta <= 2) color = "#ff0000";
+        else if (delta <= 5) color = "#ff9800";
         val.style.color = color;
         title.style.color = color;
     }
