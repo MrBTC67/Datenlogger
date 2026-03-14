@@ -1,32 +1,44 @@
 <!DOCTYPE html><html lang="de"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Astro-Monitor Pro</title>    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    <style>
+        :root {
+            --color-temp: #b71c1c;
+            --color-hum: #2196f3;
+            --color-dew: #9c27b0;
+            --color-abs: #ffeb3b;
+        }
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 10px; }
         .container { max-width: 1000px; margin: auto; display: flex; flex-direction: column; }
-        /* 2x2 Grid für die Karten */
         .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .card { background: #1e1e1e; padding: 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .card h3 { margin: 0 0 5px 0; font-size: 1em; color: #aaa; }
-        .val { font-size: 1.8em; font-weight: bold; }
-        #currTemp { color: #ff5722; }
-        #currHum { color: #2196f3; }
-        #currDew { color: #4caf50; }
-        #currAbs { color: #ffeb3b; }
+        .card { background: #1e1e1e; padding: 20px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        
+        /* Schriftgrößen angepasst */
+        .card h3 { margin: 0 0 8px 0; font-size: 1.2em; }
+        .val { font-size: 2.2em; font-weight: bold; }
+        
+        .c-temp h3, #currTemp { color: var(--color-temp); }
+        .c-hum h3, #currHum { color: var(--color-hum); }
+        .c-dew h3, #currDew { color: var(--color-dew); }
+        .c-abs h3, #currAbs { color: var(--color-abs); }
+
         .chart-container { background: #1e1e1e; padding: 15px; border-radius: 12px; height: 400px; width: 100%; box-sizing: border-box; }
-        /* Steuerung unter dem Chart */
-        .controls { margin-top: 20px; display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; background: #1e1e1e; padding: 15px; border-radius: 12px; }
+        
+        .controls { margin-top: 20px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; background: #1e1e1e; padding: 20px; border-radius: 12px; }
         .control-group { display: flex; flex-direction: column; align-items: flex-start; }
-        select { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 14px; margin-top: 5px; }
-        label { font-size: 0.8em; color: #ccc; }
-        h1 { font-size: 1.5em; margin-bottom: 15px; }
+        
+        /* Controls Schriftgröße */
+        label { font-size: 1em; color: #ccc; margin-bottom: 5px; }
+        select { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        
+        h1 { font-size: 1.8em; margin-bottom: 15px; }
     </style></head><body>
 
 <div class="container">
     <h1>Astro-Monitor Pro</h1>
     
     <div class="card-grid">
-        <div class="card"><h3>Temp</h3><div id="currTemp" class="val">--</div></div>
-        <div class="card"><h3>Hum</h3><div id="currHum" class="val">--</div></div>
-        <div class="card"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
-        <div class="card"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
+        <div class="card c-temp"><h3>Temp</h3><div id="currTemp" class="val">--</div></div>
+        <div class="card c-hum"><h3>Hum</h3><div id="currHum" class="val">--</div></div>
+        <div class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
+        <div class="card c-abs"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
     </div>
 
     <div class="chart-container">
@@ -54,17 +66,23 @@
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     
+    const colorTemp = '#b71c1c';
+    const colorHum = '#2196f3';
+
     const chart = new Chart(ctx, {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'Temp (°C)', borderColor: '#ff5722', data: [], yAxisID: 'y', tension: 0.3, pointRadius: 0 },
-            { label: 'Feuchte (%)', borderColor: '#2196f3', data: [], yAxisID: 'y1', tension: 0.3, pointRadius: 0 }
+            { label: 'Temp (°C)', borderColor: colorTemp, data: [], yAxisID: 'y', tension: 0.3, pointRadius: 0 },
+            { label: 'Feuchte (%)', borderColor: colorHum, data: [], yAxisID: 'y1', tension: 0.3, pointRadius: 0 }
         ]},
         options: {
             responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
             scales: {
-                y: { position: 'left', ticks: { color: '#ff5722' }, grid: { color: '#333' } },
-                y1: { position: 'right', ticks: { color: '#2196f3' }, grid: { display: false } }
+                y: { position: 'left', ticks: { color: colorTemp, font: { size: 14 } }, grid: { color: '#333' } },
+                y1: { position: 'right', ticks: { color: colorHum, font: { size: 14 } }, grid: { display: false } }
+            },
+            plugins: {
+                legend: { labels: { font: { size: 14 }, color: '#fff' } }
             }
         }
     });
