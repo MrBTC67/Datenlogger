@@ -66,14 +66,45 @@
             responsive: true,
             animation: { duration: 0 },
             scales: {
-                y: { position: 'left', ticks: { color: '#ff5722' }, grid: { color: '#333' } },
-                y1: { position: 'right', min: 0, max: 100, ticks: { color: '#2196f3' }, grid: { display: false } }
+                y: { 
+                    position: 'left', 
+                    ticks: { 
+                        color: '#ff5722',
+                        callback: function(value) { return value.toFixed(1) + ' °C'; }
+                    }, 
+                    grid: { color: '#333' },
+                    beginAtZero: false,
+                    grace: 2 // Mindestens +/- 2 Grad Puffer
+                },
+                y1: { 
+                    position: 'right', 
+                    ticks: { 
+                        color: '#2196f3',
+                        callback: function(value) { return value.toFixed(0) + ' %'; }
+                    }, 
+                    grid: { display: false },
+                    grace: '5%' // Etwa +/- 5% Puffer
+                }
             },
-            plugins: { tooltip: { mode: 'index', intersect: false } }
+            plugins: { 
+                tooltip: { 
+                    mode: 'index', 
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed.y !== null) {
+                                label += context.parsed.y.toFixed(1);
+                            }
+                            return label;
+                        }
+                    }
+                } 
+            }
         }
     });
 
-    // Lädt Sitzungen und sortiert sie (neueste zuerst)
     async function loadSessions() {
         try {
             const response = await fetch(`${dbUrl}.json?shallow=true`);
@@ -82,8 +113,6 @@
 
             const select = document.getElementById('sessionSelect');
             const currentSelected = select.value;
-            
-            // Alphabetisch absteigend sortieren (z.B. 2024 kommt vor 2023)
             const sortedKeys = Object.keys(sessions).sort().reverse();
 
             select.innerHTML = "";
@@ -129,7 +158,6 @@
             if (last) {
                 const t = (last.temp || last.t || 0);
                 const h = (last.hum || last.h || 0);
-
                 document.getElementById('currTemp').innerText = t.toFixed(1) + "°C";
                 document.getElementById('currHum').innerText = h.toFixed(1) + "%";
             }
