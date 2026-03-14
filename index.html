@@ -2,72 +2,50 @@
         :root {
             --color-temp: #b71c1c;
             --color-hum: #2196f3;
-            --color-dew: #9c27b0;
             --color-abs: #ffeb3b;
         }
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 10px; }
         .container { max-width: 1000px; margin: auto; display: flex; flex-direction: column; }
         .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .card { background: #1e1e1e; padding: 20px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .card { background: #1e1e1e; padding: 20px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: all 0.5s ease; }
         
-        /* Schriftgrößen angepasst */
         .card h3 { margin: 0 0 8px 0; font-size: 1.2em; }
         .val { font-size: 2.2em; font-weight: bold; }
         
         .c-temp h3, #currTemp { color: var(--color-temp); }
         .c-hum h3, #currHum { color: var(--color-hum); }
-        .c-dew h3, #currDew { color: var(--color-dew); }
         .c-abs h3, #currAbs { color: var(--color-abs); }
+        
+        /* Standardfarbe Taupunkt */
+        .c-dew h3, #currDew { color: #555; }
 
         .chart-container { background: #1e1e1e; padding: 15px; border-radius: 12px; height: 400px; width: 100%; box-sizing: border-box; }
-        
         .controls { margin-top: 20px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; background: #1e1e1e; padding: 20px; border-radius: 12px; }
         .control-group { display: flex; flex-direction: column; align-items: flex-start; }
-        
-        /* Controls Schriftgröße */
         label { font-size: 1em; color: #ccc; margin-bottom: 5px; }
         select { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        
         h1 { font-size: 1.8em; margin-bottom: 15px; }
     </style></head><body>
 
 <div class="container">
     <h1>Astro-Monitor Pro</h1>
-    
     <div class="card-grid">
         <div class="card c-temp"><h3>Temp</h3><div id="currTemp" class="val">--</div></div>
         <div class="card c-hum"><h3>Hum</h3><div id="currHum" class="val">--</div></div>
-        <div class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
+        <div id="dewCard" class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
         <div class="card c-abs"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
     </div>
-
-    <div class="chart-container">
-        <canvas id="astroChart"></canvas>
-    </div>
-
+    <div class="chart-container"><canvas id="astroChart"></canvas></div>
     <div class="controls">
-        <div class="control-group">
-            <label>Sitzung:</label>
-            <select id="sessionSelect" onchange="updateData()"><option value="">Lade...</option></select>
-        </div>
-        <div class="control-group">
-            <label>Datenpunkte:</label>
-            <select id="limitSelect" onchange="updateData()">
-                <option value="50">50</option>
-                <option value="100" selected>100</option>
-                <option value="500">500</option>
-                <option value="1000">1000</option>
-            </select>
-        </div>
+        <div class="control-group"><label>Sitzung:</label><select id="sessionSelect" onchange="updateData()"><option value="">Lade...</option></select></div>
+        <div class="control-group"><label>Datenpunkte:</label><select id="limitSelect" onchange="updateData()"><option value="50">50</option><option value="100" selected>100</option><option value="500">500</option><option value="1000">1000</option></select></div>
     </div>
 </div>
 
 <script>
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
-    
-    const colorTemp = '#b71c1c';
-    const colorHum = '#2196f3';
+    const colorTemp = '#b71c1c', colorHum = '#2196f3';
 
     const chart = new Chart(ctx, {
         type: 'line',
@@ -81,9 +59,7 @@
                 y: { position: 'left', ticks: { color: colorTemp, font: { size: 14 } }, grid: { color: '#333' } },
                 y1: { position: 'right', ticks: { color: colorHum, font: { size: 14 } }, grid: { display: false } }
             },
-            plugins: {
-                legend: { labels: { font: { size: 14 }, color: '#fff' } }
-            }
+            plugins: { legend: { labels: { font: { size: 14 }, color: '#fff' } } }
         }
     });
 
@@ -91,6 +67,23 @@
         const a = 17.27, b = 237.7;
         const alpha = ((a * t) / (b + t)) + Math.log(h / 100);
         return (b * alpha) / (a - alpha);
+    }
+
+    function updateDewColor(t, dp) {
+        const delta = t - dp;
+        const card = document.getElementById('dewCard');
+        const val = document.getElementById('currDew');
+        const title = card.querySelector('h3');
+        let color = "#555555"; // Dunkelgrau
+
+        if (delta <= 2) {
+            color = "#ff0000"; // Rot
+        } else if (delta <= 5) {
+            color = "#ff9800"; // Orange
+        }
+
+        val.style.color = color;
+        title.style.color = color;
     }
 
     function calcAbsHum(t, h) {
@@ -133,10 +126,12 @@
             });
             if (last) {
                 const t = (last.temp || last.t || 0), h = (last.hum || last.h || 0);
+                const dp = calcDewPoint(t, h);
                 document.getElementById('currTemp').innerText = t.toFixed(1) + "°C";
                 document.getElementById('currHum').innerText = h.toFixed(1) + "%";
-                document.getElementById('currDew').innerText = calcDewPoint(t, h).toFixed(1) + "°C";
+                document.getElementById('currDew').innerText = dp.toFixed(1) + "°C";
                 document.getElementById('currAbs').innerText = calcAbsHum(t, h).toFixed(1) + " g/m³";
+                updateDewColor(t, dp);
             }
             chart.data.labels = lbls; chart.data.datasets[0].data = tD; chart.data.datasets[1].data = hD;
             chart.update('none');
@@ -144,10 +139,8 @@
     }
 
     async function init() {
-        await loadSessions(); 
-        await updateData();
-        setInterval(loadSessions, 30000); 
-        setInterval(updateData, 15000);
+        await loadSessions(); await updateData();
+        setInterval(loadSessions, 30000); setInterval(updateData, 15000);
     }
     init();
 </script></body></html>
