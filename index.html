@@ -6,17 +6,28 @@
     <title>Astro-Monitor Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 10px; }
         .container { max-width: 1000px; margin: auto; }
-        .card-row { display: flex; justify-content: space-around; gap: 15px; margin-bottom: 20px; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 45%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: background 0.5s; }
-        .val { font-size: 2.2em; font-weight: bold; }
+        .card-row { display: flex; justify-content: space-around; gap: 10px; margin-bottom: 20px; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 12px; width: 45%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .val { font-size: 2em; font-weight: bold; }
         #currTemp { color: #ff5722; }
         #currHum { color: #2196f3; }
-        .chart-container { background: #1e1e1e; padding: 20px; border-radius: 12px; }
-        .controls { margin-bottom: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 15px; align-items: center; }
+        
+        /* Höherer Container für den Chart */
+        .chart-container { 
+            background: #1e1e1e; 
+            padding: 15px; 
+            border-radius: 12px; 
+            position: relative; 
+            height: 450px; /* Feste Höhe für bessere Sichtbarkeit am Handy */
+            width: 100%;
+        }
+
+        .controls { margin-bottom: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 10px; align-items: center; flex-wrap: wrap; }
         select { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 14px; }
-        label { font-size: 0.9em; color: #ccc; }
+        label { font-size: 0.8em; color: #ccc; }
+        h1 { font-size: 1.5em; margin-bottom: 15px; }
     </style>
 </head>
 <body>
@@ -26,25 +37,25 @@
     
     <div class="controls">
         <div>
-            <label>Mess-Sitzung:</label>
+            <label>Sitzung:</label>
             <select id="sessionSelect" onchange="updateData()">
-                <option value="verlauf">Lade Sitzungen...</option>
+                <option value="verlauf">Lade...</option>
             </select>
         </div>
         <div>
-            <label>Datenpunkte:</label>
+            <label>Daten:</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="50">Letzte 50</option>
-                <option value="100">Letzte 100</option>
-                <option value="500">Letzte 500</option>
-                <option value="1000">Letzte 1000</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="500">500</option>
+                <option value="1000">1000</option>
             </select>
         </div>
     </div>
 
     <div class="card-row">
-        <div class="card"><h3>Temperatur</h3><div id="currTemp" class="val">--</div></div>
-        <div class="card"><h3>Feuchtigkeit</h3><div id="currHum" class="val">--</div></div>
+        <div class="card"><h3>Temp</h3><div id="currTemp" class="val">--</div></div>
+        <div class="card"><h3>Hum</h3><div id="currHum" class="val">--</div></div>
     </div>
 
     <div class="chart-container">
@@ -64,6 +75,7 @@
         ]},
         options: {
             responsive: true,
+            maintainAspectRatio: false, // Wichtig für die Handy-Ansicht
             animation: { duration: 0 },
             scales: {
                 y: { 
@@ -74,7 +86,7 @@
                     }, 
                     grid: { color: '#333' },
                     beginAtZero: false,
-                    grace: 2 // Mindestens +/- 2 Grad Puffer
+                    grace: 2
                 },
                 y1: { 
                     position: 'right', 
@@ -83,7 +95,7 @@
                         callback: function(value) { return value.toFixed(0) + ' %'; }
                     }, 
                     grid: { display: false },
-                    grace: '5%' // Etwa +/- 5% Puffer
+                    grace: '5%'
                 }
             },
             plugins: { 
@@ -110,11 +122,9 @@
             const response = await fetch(`${dbUrl}.json?shallow=true`);
             const sessions = await response.json();
             if (!sessions) return;
-
             const select = document.getElementById('sessionSelect');
             const currentSelected = select.value;
             const sortedKeys = Object.keys(sessions).sort().reverse();
-
             select.innerHTML = "";
             sortedKeys.forEach(key => {
                 let opt = document.createElement('option');
@@ -122,7 +132,6 @@
                 opt.innerHTML = key;
                 select.appendChild(opt);
             });
-            
             if (sessions[currentSelected]) {
                 select.value = currentSelected;
             } else if (sortedKeys.length > 0 && !currentSelected) {
@@ -135,18 +144,14 @@
         const limit = document.getElementById('limitSelect').value;
         const session = document.getElementById('sessionSelect').value;
         if (!session) return;
-
         const url = `${dbUrl}${session}.json?orderBy="$key"&limitToLast=${limit}`;
-        
         try {
             const response = await fetch(url);
             const data = await response.json();
             if (!data) return;
-
             const sortedKeys = Object.keys(data).sort();
             const labels = [], tempD = [], humD = [];
             let last;
-
             sortedKeys.forEach(key => {
                 const e = data[key];
                 labels.push(e.ts || key.slice(-8)); 
@@ -154,14 +159,12 @@
                 humD.push(e.hum || e.h || 0);
                 last = e;
             });
-
             if (last) {
                 const t = (last.temp || last.t || 0);
                 const h = (last.hum || last.h || 0);
                 document.getElementById('currTemp').innerText = t.toFixed(1) + "°C";
                 document.getElementById('currHum').innerText = h.toFixed(1) + "%";
             }
-
             chart.data.labels = labels;
             chart.data.datasets[0].data = tempD;
             chart.data.datasets[1].data = humD;
@@ -175,7 +178,6 @@
         setInterval(loadSessions, 30000);
         setInterval(updateData, 15000);
     }
-
     init();
 </script>
 </body>
