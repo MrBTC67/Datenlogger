@@ -9,15 +9,13 @@
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 20px; }
         .container { max-width: 1000px; margin: auto; }
         .card-row { display: flex; justify-content: space-around; gap: 15px; margin-bottom: 20px; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 30%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: background 0.5s; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 12px; width: 45%; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: background 0.5s; }
         .val { font-size: 2.2em; font-weight: bold; }
         #currTemp { color: #ff5722; }
         #currHum { color: #2196f3; }
-        #currDiff { color: #4caf50; }
         .chart-container { background: #1e1e1e; padding: 20px; border-radius: 12px; }
         .controls { margin-bottom: 20px; text-align: right; display: flex; justify-content: flex-end; gap: 15px; align-items: center; }
         select { background: #333; color: white; border: 1px solid #555; padding: 8px; border-radius: 5px; cursor: pointer; font-size: 14px; }
-        .alarm-bg { background: #600000 !important; }
         label { font-size: 0.9em; color: #ccc; }
     </style>
 </head>
@@ -47,7 +45,6 @@
     <div class="card-row">
         <div class="card"><h3>Temperatur</h3><div id="currTemp" class="val">--</div></div>
         <div class="card"><h3>Feuchtigkeit</h3><div id="currHum" class="val">--</div></div>
-        <div class="card"><h3>Taupunkt-Diff</h3><div id="currDiff" class="val">--</div></div>
     </div>
 
     <div class="chart-container">
@@ -63,8 +60,7 @@
         type: 'line',
         data: { labels: [], datasets: [
             { label: 'Temp (°C)', borderColor: '#ff5722', data: [], yAxisID: 'y', tension: 0.3, pointRadius: 0 },
-            { label: 'Feuchte (%)', borderColor: '#2196f3', data: [], yAxisID: 'y1', tension: 0.3, pointRadius: 0 },
-            { label: 'Diff (K)', borderColor: '#4caf50', data: [], yAxisID: 'y', tension: 0.3, borderDash: [5, 5], pointRadius: 0 }
+            { label: 'Feuchte (%)', borderColor: '#2196f3', data: [], yAxisID: 'y1', tension: 0.3, pointRadius: 0 }
         ]},
         options: {
             responsive: true,
@@ -119,7 +115,7 @@
             if (!data) return;
 
             const sortedKeys = Object.keys(data).sort();
-            const labels = [], tempD = [], humD = [], diffD = [];
+            const labels = [], tempD = [], humD = [];
             let last;
 
             sortedKeys.forEach(key => {
@@ -127,28 +123,20 @@
                 labels.push(e.ts || key.slice(-8)); 
                 tempD.push(e.temp || e.t || 0);
                 humD.push(e.hum || e.h || 0);
-                diffD.push(e.diff || e.d || 0);
                 last = e;
             });
 
             if (last) {
                 const t = (last.temp || last.t || 0);
                 const h = (last.hum || last.h || 0);
-                const d = (last.diff || last.d || 0);
 
                 document.getElementById('currTemp').innerText = t.toFixed(1) + "°C";
                 document.getElementById('currHum').innerText = h.toFixed(1) + "%";
-                document.getElementById('currDiff').innerText = d.toFixed(1) + "K";
-
-                document.querySelectorAll('.card').forEach(c => 
-                    d <= 2 ? c.classList.add('alarm-bg') : c.classList.remove('alarm-bg')
-                );
             }
 
             chart.data.labels = labels;
             chart.data.datasets[0].data = tempD;
             chart.data.datasets[1].data = humD;
-            chart.data.datasets[2].data = diffD;
             chart.update('none');
         } catch (e) { console.error("Update-Fehler:", e); }
     }
