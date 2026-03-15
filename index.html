@@ -96,7 +96,7 @@
             if (!s) return;
             const sel = document.getElementById('sessionSelect');
             const cur = sel.value;
-            const keys = Object.keys(s).sort().reverse();
+            const keys = Object.keys(s).filter(k => k !== 'Regenmesser').sort().reverse();
             sel.innerHTML = "";
             keys.forEach(k => { 
                 let o = document.createElement('option'); o.value = k; o.innerHTML = k; sel.appendChild(o); 
