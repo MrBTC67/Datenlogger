@@ -1,8 +1,15 @@
-<!DOCTYPE html><html lang="de"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <title>Astro-Monitor Pro</title>    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>    <style>
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astro-Monitor Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
         :root {
             --color-temp: #b71c1c;
             --color-hum: #2196f3;
-            --color-abs: #2e7d32; /* Dunkelgrün */
+            --color-abs: #2e7d32;
         }
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 10px; }
         .container { max-width: 1000px; margin: auto; display: flex; flex-direction: column; }
@@ -20,7 +27,9 @@
         label { font-size: 1em; color: #ccc; margin-bottom: 5px; }
         select { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; }
         h1 { font-size: 1.8em; margin-bottom: 15px; }
-    </style></head><body>
+    </style>
+</head>
+<body>
 
 <div class="container">
     <h1>Astro-Monitor Pro</h1>
@@ -32,7 +41,12 @@
     </div>
     <div class="chart-container"><canvas id="astroChart"></canvas></div>
     <div class="controls">
-        <div class="control-group"><label>Sitzung:</label><select id="sessionSelect" onchange="updateData()"><option value="">Lade...</option></select></div>
+        <div class="control-group">
+            <label>Sitzung:</label>
+            <select id="sessionSelect" onchange="updateData()">
+                <option value="">Lade...</option>
+            </select>
+        </div>
         <div class="control-group">
             <label>Datenpunkte:</label>
             <select id="limitSelect" onchange="updateData()">
@@ -96,12 +110,21 @@
             if (!s) return;
             const sel = document.getElementById('sessionSelect');
             const cur = sel.value;
-            const keys = Object.keys(s).sort().reverse();
+            
+            // Filtert den Eintrag "Regenmesser" explizit heraus
+            const keys = Object.keys(s)
+                .filter(k => k !== "Regenmesser")
+                .sort()
+                .reverse();
+                
             sel.innerHTML = "";
             keys.forEach(k => { 
-                let o = document.createElement('option'); o.value = k; o.innerHTML = k; sel.appendChild(o); 
+                let o = document.createElement('option'); 
+                o.value = k; 
+                o.innerHTML = k; 
+                sel.appendChild(o); 
             });
-            if (cur && s[cur]) sel.value = cur; else sel.selectedIndex = 0;
+            if (cur && keys.includes(cur)) sel.value = cur; else sel.selectedIndex = 0;
         } catch (e) { console.error(e); }
     }
 
@@ -138,8 +161,12 @@
     }
 
     async function init() {
-        await loadSessions(); await updateData();
-        setInterval(loadSessions, 30000); setInterval(updateData, 15000);
+        await loadSessions(); 
+        await updateData();
+        setInterval(loadSessions, 30000); 
+        setInterval(updateData, 15000);
     }
     init();
-</script></body></html>
+</script>
+</body>
+</html>
