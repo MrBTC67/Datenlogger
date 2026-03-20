@@ -9,7 +9,7 @@
     <style>
         :root {
             --color-temp: #b71c1c;
-            --color-hum: #2196f3;
+            --color-hum: #0d47a1;
             --color-abs: #2e7d32;
         }
         body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 10px; }
@@ -69,18 +69,48 @@
 
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
-    const colorTemp = '#b71c1c', colorHum = '#2196f3';
+    
+    // Hilfsfunktion für die Farbbereiche
+    const getTempColor = (val) => {
+        if (val < 0) return '#2196f3';          // Blau
+        if (val < 5) return '#81d4fa';          // Hellblau
+        if (val < 10) return '#4caf50';         // Grün
+        if (val < 20) return '#aed581';         // Hellgrün
+        if (val < 30) return '#ffb74d';         // Orange
+        return '#e53935';                       // Rot
+    };
+
+    const colorHum = '#0d47a1'; 
 
     const chart = new Chart(ctx, {
         type: 'line',
         data: { labels: [], datasets: [
-            { label: 'Temp (°C)', borderColor: colorTemp, data: [], yAxisID: 'y', tension: 0.3, pointRadius: 0 },
-            { label: 'Feuchte (%)', borderColor: colorHum, data: [], yAxisID: 'y1', tension: 0.3, pointRadius: 0 }
+            { 
+                label: 'Temp (°C)', 
+                data: [], 
+                yAxisID: 'y', 
+                tension: 0.3, 
+                pointRadius: 0,
+                fill: 'origin',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)', // Ganz dezente Fläche für bessere Sichtbarkeit
+                // Segment-Logik für dynamische Farben
+                segment: {
+                    borderColor: ctx => getTempColor(ctx.p0.parsed.y)
+                }
+            },
+            { 
+                label: 'Feuchte (%)', 
+                borderColor: colorHum, 
+                data: [], 
+                yAxisID: 'y1', 
+                tension: 0.3, 
+                pointRadius: 0 
+            }
         ]},
         options: {
             responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
             scales: {
-                y: { type: 'linear', position: 'left', ticks: { color: colorTemp, font: { size: 14 } }, grid: { color: '#333' } },
+                y: { type: 'linear', position: 'left', ticks: { color: '#ccc', font: { size: 14 } }, grid: { color: '#333' } },
                 y1: { type: 'linear', position: 'right', ticks: { color: colorHum, font: { size: 14 } }, grid: { display: false } }
             },
             plugins: { 
