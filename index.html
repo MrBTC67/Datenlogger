@@ -27,13 +27,11 @@
         .control-group { display: flex; flex-direction: column; align-items: flex-start; }
         label { font-size: 1em; color: #ccc; margin-bottom: 5px; }
         select { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        h1 { font-size: 1.8em; margin-bottom: 15px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>Astro-Monitor Pro</h1>
     <div class="card-grid">
         <div class="card c-temp"><h3>Temp</h3><div id="currTemp" class="val">--</div></div>
         <div class="card c-hum"><h3>Hum</h3><div id="currHum" class="val">--</div></div>
@@ -70,14 +68,13 @@
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     
-    // Hilfsfunktion für die Farbbereiche
     const getTempColor = (val) => {
-        if (val < 0) return '#2196f3';          // Blau
-        if (val < 5) return '#81d4fa';          // Hellblau
-        if (val < 10) return '#4caf50';         // Grün
-        if (val < 20) return '#aed581';         // Hellgrün
-        if (val < 30) return '#ffb74d';         // Orange
-        return '#e53935';                       // Rot
+        if (val < 0) return '#2196f3';          
+        if (val < 5) return '#81d4fa';          
+        if (val < 10) return '#4caf50';         
+        if (val < 20) return '#aed581';         
+        if (val < 30) return '#ffb74d';         
+        return '#e53935';                       
     };
 
     const colorHum = '#0d47a1'; 
@@ -92,8 +89,7 @@
                 tension: 0.3, 
                 pointRadius: 0,
                 fill: 'origin',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)', // Ganz dezente Fläche für bessere Sichtbarkeit
-                // Segment-Logik für dynamische Farben
+                backgroundColor: 'rgba(255, 255, 255, 0.05)', 
                 segment: {
                     borderColor: ctx => getTempColor(ctx.p0.parsed.y)
                 }
