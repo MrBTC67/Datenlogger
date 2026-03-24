@@ -11,58 +11,121 @@
             --color-temp: #b71c1c;
             --color-hum: #0d47a1;
             --color-abs: #2e7d32;
+            --bg-dark: #121212;
+            --card-bg: #1e1e1e;
         }
-        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; text-align: center; margin: 0; padding: 10px; }
-        .container { max-width: 1000px; margin: auto; display: flex; flex-direction: column; }
-        .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .card { background: #1e1e1e; padding: 20px 10px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); transition: all 0.5s ease; }
-        .card h3 { margin: 0 0 8px 0; font-size: 1.2em; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: var(--bg-dark); 
+            color: white; 
+            text-align: center; 
+            margin: 0; 
+            padding: 10px; 
+            overflow-x: hidden;
+        }
+        .container { max-width: 1100px; margin: auto; display: flex; flex-direction: column; gap: 15px; }
+        
+        .card-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
+            gap: 12px; 
+            margin-bottom: 10px; 
+        }
+        
+        .card { 
+            background: var(--card-bg); 
+            padding: 20px 10px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            border: 1px solid #333;
+        }
+        .card h3 { margin: 0 0 8px 0; font-size: 1.1em; text-transform: uppercase; letter-spacing: 1px; }
         .val { font-size: 2.2em; font-weight: bold; }
+        
         .c-temp h3, #currTemp { color: var(--color-temp); }
         .c-hum h3, #currHum { color: var(--color-hum); }
         .c-abs h3, #currAbs { color: var(--color-abs); }
-        .c-dew h3, #currDew { color: #555; }
-        .chart-container { background: #1e1e1e; padding: 15px; border-radius: 12px; height: 400px; width: 100%; box-sizing: border-box; }
-        .controls { margin-top: 20px; display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; background: #1e1e1e; padding: 20px; border-radius: 12px; }
-        .control-group { display: flex; flex-direction: column; align-items: flex-start; }
-        label { font-size: 1em; color: #ccc; margin-bottom: 5px; }
-        select { background: #333; color: white; border: 1px solid #555; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        .c-dew h3, #currDew { color: #888; }
+        
+        .chart-container { 
+            background: var(--card-bg); 
+            padding: 15px; 
+            border-radius: 12px; 
+            height: 450px; 
+            width: 100%; 
+            box-sizing: border-box; 
+            border: 1px solid #333;
+        }
+        
+        .controls { 
+            display: flex; 
+            justify-content: center; 
+            gap: 20px; 
+            flex-wrap: wrap; 
+            background: var(--card-bg); 
+            padding: 15px; 
+            border-radius: 12px; 
+            border: 1px solid #333;
+        }
+        
+        .control-group { display: flex; flex-direction: column; align-items: center; }
+        label { font-size: 0.9em; color: #888; margin-bottom: 5px; }
+        
+        select { 
+            background: #2a2a2a; 
+            color: white; 
+            border: 1px solid #444; 
+            padding: 8px 12px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px;
+            outline: none;
+        }
+        select:focus { border-color: var(--color-hum); }
+
+        @media (max-width: 600px) {
+            .card-grid { grid-template-columns: 1fr 1fr; }
+            .val { font-size: 1.6em; }
+            .chart-container { height: 300px; }
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card-grid">
-        <div class="card c-temp"><h3>Temp</h3><div id="currTemp" class="val">--</div></div>
-        <div class="card c-hum"><h3>Hum</h3><div id="currHum" class="val">--</div></div>
+        <div class="card c-temp"><h3>Temperatur</h3><div id="currTemp" class="val">--</div></div>
+        <div class="card c-hum"><h3>Feuchte</h3><div id="currHum" class="val">--</div></div>
         <div id="dewCard" class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
         <div class="card c-abs"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
     </div>
-    <div class="chart-container"><canvas id="astroChart"></canvas></div>
+
+    <div class="chart-container">
+        <canvas id="astroChart"></canvas>
+    </div>
+
     <div class="controls">
         <div class="control-group">
-            <label>Sitzung:</label>
+            <label>Sitzung (Logger)</label>
             <select id="sessionSelect" onchange="updateData()">
-                <option value="">Lade...</option>
+                <option value="">Lade Sitzungen...</option>
             </select>
         </div>
         <div class="control-group">
-            <label>Datenpunkte:</label>
+            <label>Datenpunkte</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="50">50</option>
-                <option value="100" selected>100</option>
-                <option value="500">500</option>
-                <option value="1000">1000</option>
-                <option value="2000">2000</option>
-                <option value="5000">5000</option>
+                <option value="50">Letzte 50</option>
+                <option value="100" selected>Letzte 100</option>
+                <option value="500">Letzte 500</option>
+                <option value="1000">Letzte 1000</option>
             </select>
         </div>
     </div>
 </div>
 
 <script>
-    if (typeof chartjsPluginAnnotation !== 'undefined') {
-        Chart.register(chartjsPluginAnnotation);
+    if (typeof ChartjsPluginAnnotation !== 'undefined') {
+        Chart.register(ChartjsPluginAnnotation);
     }
 
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
@@ -71,9 +134,8 @@
     const getTempColor = (val) => {
         if (val < 0) return '#2196f3';          
         if (val < 5) return '#81d4fa';          
-        if (val < 10) return '#4caf50';         
-        if (val < 20) return '#aed581';         
-        if (val < 30) return '#ffb74d';         
+        if (val < 15) return '#4caf50';         
+        if (val < 25) return '#ffb74d';         
         return '#e53935';                       
     };
 
@@ -81,47 +143,66 @@
 
     const chart = new Chart(ctx, {
         type: 'line',
-        data: { labels: [], datasets: [
-            { 
-                label: 'Temp (°C)', 
-                data: [], 
-                yAxisID: 'y', 
-                tension: 0.3, 
-                pointRadius: 0,
-                fill: 'origin',
-                backgroundColor: 'rgba(255, 255, 255, 0.05)', 
-                segment: {
-                    borderColor: ctx => getTempColor(ctx.p0.parsed.y)
+        data: { 
+            labels: [], 
+            datasets: [
+                { 
+                    label: 'Temp (°C)', 
+                    data: [], 
+                    yAxisID: 'y', 
+                    tension: 0.3, 
+                    pointRadius: 0,
+                    borderWidth: 3,
+                    fill: 'origin',
+                    backgroundColor: 'rgba(183, 28, 28, 0.05)', 
+                    segment: {
+                        borderColor: ctx => ctx.p0 ? getTempColor(ctx.p0.parsed.y) : '#fff'
+                    }
+                },
+                { 
+                    label: 'Feuchte (%)', 
+                    borderColor: colorHum, 
+                    data: [], 
+                    yAxisID: 'y1', 
+                    tension: 0.3, 
+                    pointRadius: 0,
+                    borderWidth: 2
+                }
+            ]
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false, 
+            animation: { duration: 800 },
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { 
+                    type: 'linear', position: 'left', 
+                    ticks: { color: '#ccc' }, 
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    title: { display: true, text: 'Temp °C', color: '#888' }
+                },
+                y1: { 
+                    type: 'linear', position: 'right', 
+                    min: 0, max: 100,
+                    ticks: { color: colorHum }, 
+                    grid: { display: false },
+                    title: { display: true, text: 'Feuchte %', color: colorHum }
                 }
             },
-            { 
-                label: 'Feuchte (%)', 
-                borderColor: colorHum, 
-                data: [], 
-                yAxisID: 'y1', 
-                tension: 0.3, 
-                pointRadius: 0 
-            }
-        ]},
-        options: {
-            responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
-            scales: {
-                y: { type: 'linear', position: 'left', ticks: { color: '#ccc', font: { size: 14 } }, grid: { color: '#333' } },
-                y1: { type: 'linear', position: 'right', ticks: { color: colorHum, font: { size: 14 } }, grid: { display: false } }
-            },
             plugins: { 
-                legend: { labels: { font: { size: 14 }, color: '#fff' } },
+                legend: { position: 'top', labels: { color: '#fff' } },
                 annotation: {
                     annotations: {
                         minLine: {
                             type: 'line', scaleID: 'y', value: 0,
-                            borderColor: '#1565c0', borderWidth: 2, borderDash: [6, 6],
-                            label: { display: true, content: 'Min', position: 'start', backgroundColor: 'rgba(21, 101, 192, 0.7)', color: '#fff', font: {size: 11} }
+                            borderColor: 'rgba(33, 150, 243, 0.5)', borderWidth: 1, borderDash: [5, 5],
+                            label: { display: true, position: 'start', backgroundColor: 'rgba(0,0,0,0.5)', color: '#2196f3', font: {size: 10} }
                         },
                         maxLine: {
                             type: 'line', scaleID: 'y', value: 0,
-                            borderColor: '#ef6c00', borderWidth: 2, borderDash: [6, 6],
-                            label: { display: true, content: 'Max', position: 'end', backgroundColor: 'rgba(239, 108, 0, 0.7)', color: '#fff', font: {size: 11} }
+                            borderColor: 'rgba(229, 57, 53, 0.5)', borderWidth: 1, borderDash: [5, 5],
+                            label: { display: true, position: 'end', backgroundColor: 'rgba(0,0,0,0.5)', color: '#e53935', font: {size: 10} }
                         }
                     }
                 }
@@ -130,6 +211,7 @@
     });
 
     function calcDewPoint(t, h) {
+        if (h <= 0) return t - 50;
         const a = 17.27, b = 237.7;
         const alpha = ((a * t) / (b + t)) + Math.log(h / 100);
         return (b * alpha) / (a - alpha);
@@ -137,13 +219,14 @@
 
     function updateDewColor(t, dp) {
         const delta = t - dp;
-        const val = document.getElementById('currDew');
-        const title = document.querySelector('.c-dew h3');
-        let color = "#555555";
-        if (delta <= 2) color = "#ff0000";
-        else if (delta <= 5) color = "#ff9800";
-        val.style.color = color;
-        title.style.color = color;
+        const valEl = document.getElementById('currDew');
+        const cardEl = document.getElementById('dewCard');
+        let color = "#888888";
+        if (delta <= 2) color = "#f44336"; 
+        else if (delta <= 4) color = "#ff9800"; 
+        
+        valEl.style.color = color;
+        if(cardEl) cardEl.style.borderColor = delta <= 3 ? color : "#333";
     }
 
     function calcAbsHum(t, h) {
@@ -155,71 +238,102 @@
             const r = await fetch(`${dbUrl}.json?shallow=true`);
             const s = await r.json();
             if (!s) return;
+            
             const sel = document.getElementById('sessionSelect');
-            const cur = sel.value;
-            const keys = Object.keys(s).filter(k => k !== "Regenmesser").sort().reverse();
+            const currentVal = sel.value;
+            
+            // Erweiterte Blacklist (Kleinschreibung für Vergleich)
+            const blacklist = [
+                "regenmesser", "null", "test", "hum", "humidity", "feuchte", 
+                "pressure", "temp", "temperatur", "temperature", "press", "pres"
+            ];
+            
+            const keys = Object.keys(s)
+                .filter(k => !blacklist.includes(k.toLowerCase())) // Case-insensitive Filter
+                .sort()
+                .reverse();
+                
             sel.innerHTML = "";
             keys.forEach(k => { 
-                let o = document.createElement('option'); o.value = k; o.innerHTML = k; sel.appendChild(o); 
+                const opt = document.createElement('option');
+                opt.value = k;
+                opt.textContent = k;
+                sel.appendChild(opt); 
             });
-            if (cur && keys.includes(cur)) sel.value = cur; else sel.selectedIndex = 0;
-        } catch (e) { console.error(e); }
+            
+            if (currentVal && keys.includes(currentVal)) {
+                sel.value = currentVal;
+            } else {
+                sel.selectedIndex = 0;
+            }
+        } catch (e) { console.error("Fehler beim Laden der Sessions:", e); }
     }
 
     async function updateData() {
-        const lim = document.getElementById('limitSelect').value;
-        const ses = document.getElementById('sessionSelect').value;
-        if (!ses) return;
+        const limit = document.getElementById('limitSelect').value;
+        const session = document.getElementById('sessionSelect').value;
+        if (!session) return;
+
         try {
-            const r = await fetch(`${dbUrl}${ses}.json?orderBy="$key"&limitToLast=${lim}`);
-            const data = await r.json();
+            const response = await fetch(`${dbUrl}${session}.json?orderBy="$key"&limitToLast=${limit}`);
+            const data = await response.json();
             if (!data) return;
+
             const keys = Object.keys(data).sort();
-            const lbls = [], tD = [], hD = [];
-            let last;
+            const labels = [], temps = [], hums = [];
+            let lastValidEntry = null;
+
             keys.forEach(k => {
-                const e = data[k];
-                lbls.push(e.ts || k.slice(-8));
-                tD.push(e.temp || e.t || 0);
-                hD.push(e.hum || e.h || 0);
-                last = e;
+                const entry = data[k];
+                if (entry && typeof entry === 'object') {
+                    const t = parseFloat(entry.temp ?? entry.t ?? entry.temperature ?? 0);
+                    const h = parseFloat(entry.hum ?? entry.h ?? entry.humidity ?? 0);
+                    const timestamp = entry.ts || k.split('_').pop() || k;
+
+                    labels.push(timestamp);
+                    temps.push(t);
+                    hums.push(h);
+                    lastValidEntry = { t, h };
+                }
             });
-            
-            if (last && tD.length > 0) {
-                const t = (last.temp || last.t || 0), h = (last.hum || last.h || 0);
+
+            if (lastValidEntry) {
+                const { t, h } = lastValidEntry;
                 const dp = calcDewPoint(t, h);
-                document.getElementById('currTemp').innerText = t.toFixed(1) + "°C";
-                document.getElementById('currHum').innerText = h.toFixed(1) + "%";
-                document.getElementById('currDew').innerText = dp.toFixed(1) + "°C";
-                document.getElementById('currAbs').innerText = calcAbsHum(t, h).toFixed(1) + " g/m³";
+                const abs = calcAbsHum(t, h);
+
+                document.getElementById('currTemp').textContent = t.toFixed(1) + "°";
+                document.getElementById('currHum').textContent = h.toFixed(0) + "%";
+                document.getElementById('currDew').textContent = dp.toFixed(1) + "°";
+                document.getElementById('currAbs').textContent = abs.toFixed(1) + "g";
+                
                 updateDewColor(t, dp);
 
-                const minT = Math.min(...tD);
-                const maxT = Math.max(...tD);
+                const minT = Math.min(...temps);
+                const maxT = Math.max(...temps);
                 
-                if (chart.options.plugins.annotation.annotations) {
-                    chart.options.plugins.annotation.annotations.minLine.value = minT;
-                    chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '°';
-                    
-                    chart.options.plugins.annotation.annotations.maxLine.value = maxT;
-                    chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '°';
-                }
+                chart.options.plugins.annotation.annotations.minLine.value = minT;
+                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1);
+                chart.options.plugins.annotation.annotations.maxLine.value = maxT;
+                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1);
             }
-            
-            chart.data.labels = lbls; 
-            chart.data.datasets[0].data = tD; 
-            chart.data.datasets[1].data = hD;
-            chart.update('none');
-        } catch (e) { console.error(e); }
+
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = temps;
+            chart.data.datasets[1].data = hums;
+            chart.update();
+
+        } catch (e) { console.error("Fehler beim Daten-Update:", e); }
     }
 
     async function init() {
-        await loadSessions(); 
+        await loadSessions();
         await updateData();
-        setInterval(loadSessions, 30000); 
-        setInterval(updateData, 15000);
+        setInterval(loadSessions, 60000); 
+        setInterval(updateData, 10000); 
     }
-    init();
+
+    window.onload = init;
 </script>
 </body>
 </html>
