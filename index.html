@@ -184,7 +184,7 @@
                 },
                 y1: { 
                     type: 'linear', position: 'right', 
-                    min: 0, max: 100,
+                    // Autoscale wird via JavaScript in updateData() gesteuert
                     ticks: { color: colorHum }, 
                     grid: { display: false },
                     title: { display: true, text: 'Feuchte %', color: colorHum }
@@ -242,14 +242,13 @@
             const sel = document.getElementById('sessionSelect');
             const currentVal = sel.value;
             
-            // Erweiterte Blacklist (Kleinschreibung für Vergleich)
             const blacklist = [
                 "regenmesser", "null", "test", "hum", "humidity", "feuchte", 
                 "pressure", "temp", "temperatur", "temperature", "press", "pres"
             ];
             
             const keys = Object.keys(s)
-                .filter(k => !blacklist.includes(k.toLowerCase())) // Case-insensitive Filter
+                .filter(k => !blacklist.includes(k.toLowerCase()))
                 .sort()
                 .reverse();
                 
@@ -309,13 +308,21 @@
                 
                 updateDewColor(t, dp);
 
+                // --- Autoscale & Annotations Temperatur ---
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
-                
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
                 chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1);
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
                 chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1);
+
+                // --- NEU: Autoscale Feuchte (Achse y1) ---
+                const minH = Math.min(...hums);
+                const maxH = Math.max(...hums);
+                
+                // Berechne Min/Max mit mind. +/- 5% Puffer, begrenzt auf 0-100%
+                chart.options.scales.y1.min = Math.max(0, Math.floor(minH - 5));
+                chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + 5));
             }
 
             chart.data.labels = labels;
