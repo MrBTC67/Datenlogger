@@ -178,13 +178,18 @@
             scales: {
                 y: { 
                     type: 'linear', position: 'left', 
-                    ticks: { color: '#ccc' }, 
+                    ticks: { 
+                        color: '#ccc',
+                        // Formatiert die Achsenbeschriftung auf 1 Nachkommastelle
+                        callback: function(value) {
+                            return value.toFixed(1);
+                        }
+                    }, 
                     grid: { color: 'rgba(255,255,255,0.1)' },
                     title: { display: true, text: 'Temp °C', color: '#888' }
                 },
                 y1: { 
                     type: 'linear', position: 'right', 
-                    // Autoscale wird via JavaScript in updateData() gesteuert
                     ticks: { color: colorHum }, 
                     grid: { display: false },
                     title: { display: true, text: 'Feuchte %', color: colorHum }
@@ -244,7 +249,8 @@
             
             const blacklist = [
                 "regenmesser", "null", "test", "hum", "humidity", "feuchte", 
-                "pressure", "temp", "temperatur", "temperature", "press", "pres"
+                "pressure", "temp", "temperatur", "temperature", "press", "pres",
+                "brightness", "lux"
             ];
             
             const keys = Object.keys(s)
@@ -308,7 +314,6 @@
                 
                 updateDewColor(t, dp);
 
-                // --- Autoscale & Annotations Temperatur ---
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
@@ -316,11 +321,8 @@
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
                 chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1);
 
-                // --- NEU: Autoscale Feuchte (Achse y1) ---
                 const minH = Math.min(...hums);
                 const maxH = Math.max(...hums);
-                
-                // Berechne Min/Max mit mind. +/- 5% Puffer, begrenzt auf 0-100%
                 chart.options.scales.y1.min = Math.max(0, Math.floor(minH - 5));
                 chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + 5));
             }
