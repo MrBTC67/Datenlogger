@@ -3,144 +3,138 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Astro-Monitor Pro</title>
+    <title>Astro-Monitor Pro | Light</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <style>
         :root {
-            --color-temp: #b71c1c;
-            --color-hum: #0d47a1;
-            --color-abs: #2e7d32;
-            --bg-dark: #121212;
-            --card-bg: #1e1e1e;
+            --color-temp: #d32f2f;
+            --color-hum: #1976d2;
+            --color-abs: #388e3c;
+            --color-dew: #455a64;
+            --bg-light: #f0f2f5;
+            --card-bg: rgba(255, 255, 255, 0.9);
+            --border: 1px solid rgba(0, 0, 0, 0.08);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
         }
+
         body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: var(--bg-dark); 
-            color: white; 
-            text-align: center; 
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            background-attachment: fixed;
+            color: #2c3e50; 
             margin: 0; 
-            padding: 10px; 
-            overflow-x: hidden;
+            padding: 20px; 
+            display: flex;
+            justify-content: center;
         }
-        .container { max-width: 1100px; margin: auto; display: flex; flex-direction: column; gap: 15px; }
-        
-        .card-grid { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); 
-            gap: 12px; 
-            margin-bottom: 10px; 
+
+        .container { 
+            width: 100%;
+            max-width: 1100px; 
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
         }
-        
+
         .card { 
             background: var(--card-bg); 
+            backdrop-filter: blur(10px);
             padding: 20px 10px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-            border: 1px solid #333;
+            border-radius: 20px; 
+            border: var(--border);
+            text-align: center;
+            box-shadow: var(--shadow);
         }
-        .card h3 { margin: 0 0 8px 0; font-size: 1.1em; text-transform: uppercase; letter-spacing: 1px; }
-        .val { font-size: 2.2em; font-weight: bold; }
+        .card h3 { 
+            margin: 0 0 5px 0; 
+            font-size: 0.75rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1.5px; 
+            color: #7f8c8d;
+        }
+        .val { font-size: 2.5rem; font-weight: 700; }
         
-        .c-temp h3, #currTemp { color: var(--color-temp); }
-        .c-hum h3, #currHum { color: var(--color-hum); }
-        .c-abs h3, #currAbs { color: var(--color-abs); }
-        .c-dew h3, #currDew { color: #888; }
-        
-        .chart-container { 
+        .c-temp .val { color: var(--color-temp); }
+        .c-hum .val { color: var(--color-hum); }
+        .c-abs .val { color: var(--color-abs); }
+        .c-dew .val { color: #455a64; }
+
+        .chart-wrapper { 
+            grid-column: span 4;
             background: var(--card-bg); 
-            padding: 15px; 
-            border-radius: 12px; 
-            height: 450px; 
-            width: 100%; 
-            box-sizing: border-box; 
-            border: 1px solid #333;
+            padding: 25px; 
+            border-radius: 24px; 
+            border: var(--border);
+            box-shadow: var(--shadow);
+            height: 400px;
         }
-        
+
         .controls { 
+            grid-column: span 4;
             display: flex; 
             justify-content: center; 
             gap: 20px; 
-            flex-wrap: wrap; 
-            background: var(--card-bg); 
-            padding: 15px; 
-            border-radius: 12px; 
-            border: 1px solid #333;
+            background: rgba(255, 255, 255, 0.5);
+            padding: 12px;
+            border-radius: 100px;
+            border: var(--border);
         }
-        
-        .control-group { display: flex; flex-direction: column; align-items: center; }
-        label { font-size: 0.9em; color: #888; margin-bottom: 5px; }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        label { font-weight: 600; font-size: 0.75rem; color: #7f8c8d; }
         
         select { 
-            background: #2a2a2a; 
-            color: white; 
-            border: 1px solid #444; 
-            padding: 8px 12px; 
-            border-radius: 6px; 
-            cursor: pointer; 
-            font-size: 14px;
-            outline: none;
+            background: white; 
+            color: #2c3e50; 
+            border: 1px solid #dcdde1; 
+            padding: 6px 14px; 
+            border-radius: 50px; 
+            font-size: 13px;
+            cursor: pointer;
         }
-        select:focus { border-color: var(--color-hum); }
 
-        @media (max-width: 600px) {
-            .card-grid { grid-template-columns: 1fr 1fr; }
-            .val { font-size: 1.6em; }
-            .chart-container { height: 300px; }
+        @media (max-width: 800px) {
+            .container { grid-template-columns: 1fr 1fr; }
+            .chart-wrapper, .controls { grid-column: span 2; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card-grid">
-        <div class="card c-temp"><h3>Temperatur</h3><div id="currTemp" class="val">--</div></div>
-        <div class="card c-hum"><h3>Feuchte</h3><div id="currHum" class="val">--</div></div>
-        <div id="dewCard" class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
-        <div class="card c-abs"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
-    </div>
+    <div class="card c-temp"><h3>Temperatur</h3><div id="currTemp" class="val">--</div></div>
+    <div class="card c-hum"><h3>Feuchte</h3><div id="currHum" class="val">--</div></div>
+    <div id="dewCard" class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
+    <div class="card c-abs"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
 
-    <div class="chart-container">
+    <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
     </div>
 
     <div class="controls">
         <div class="control-group">
-            <label>Sitzung (Logger)</label>
-            <select id="sessionSelect" onchange="updateData()">
-                <option value="">Lade Sitzungen...</option>
-            </select>
+            <label>LOGGER</label>
+            <select id="sessionSelect" onchange="updateData()"></select>
         </div>
         <div class="control-group">
-            <label>Datenpunkte</label>
+            <label>ANSICHT</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="50">Letzte 50</option>
-                <option value="100" selected>Letzte 100</option>
-                <option value="500">Letzte 500</option>
-                <option value="1000">Letzte 1000</option>
+                <option value="50">50 Punkte</option>
+                <option value="100" selected>100 Punkte</option>
+                <option value="500">500 Punkte</option>
+                <option value="1000">1000 Punkte</option>
+                <option value="2000">2000 Punkte</option>
             </select>
         </div>
     </div>
 </div>
 
 <script>
-    if (typeof ChartjsPluginAnnotation !== 'undefined') {
-        Chart.register(ChartjsPluginAnnotation);
-    }
+    if (typeof ChartjsPluginAnnotation !== 'undefined') { Chart.register(ChartjsPluginAnnotation); }
 
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     
-    const getTempColor = (val) => {
-        if (val < 0) return '#2196f3';          
-        if (val < 5) return '#81d4fa';          
-        if (val < 15) return '#4caf50';         
-        if (val < 25) return '#ffb74d';         
-        return '#e53935';                       
-    };
-
-    const colorHum = '#0d47a1'; 
-
     const chart = new Chart(ctx, {
         type: 'line',
         data: { 
@@ -152,65 +146,38 @@
                     yAxisID: 'y', 
                     tension: 0.3, 
                     pointRadius: 0,
-                    borderWidth: 3,
-                    fill: 'origin',
-                    backgroundColor: 'rgba(183, 28, 28, 0.05)', 
-                    segment: {
-                        borderColor: ctx => ctx.p0 ? getTempColor(ctx.p0.parsed.y) : '#fff'
-                    }
+                    borderWidth: 2,
+                    borderColor: '#d32f2f',
+                    fill: true,
+                    backgroundColor: 'rgba(211, 47, 47, 0.05)'
                 },
                 { 
                     label: 'Feuchte (%)', 
-                    borderColor: colorHum, 
+                    borderColor: '#1976d2', 
                     data: [], 
                     yAxisID: 'y1', 
                     tension: 0.3, 
                     pointRadius: 0,
-                    borderWidth: 2
+                    borderWidth: 1.5,
+                    borderDash: [5, 5]
                 }
             ]
         },
         options: {
             responsive: true, 
             maintainAspectRatio: false, 
-            animation: { duration: 800 },
             interaction: { mode: 'index', intersect: false },
             scales: {
-                y: { 
-                    type: 'linear', position: 'left', 
-                    ticks: { 
-                        color: '#ccc',
-                        // Formatiert die Achsenbeschriftung auf 1 Nachkommastelle
-                        callback: function(value) {
-                            return value.toFixed(1);
-                        }
-                    }, 
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    title: { display: true, text: 'Temp °C', color: '#888' }
-                },
-                y1: { 
-                    type: 'linear', position: 'right', 
-                    ticks: { color: colorHum }, 
-                    grid: { display: false },
-                    title: { display: true, text: 'Feuchte %', color: colorHum }
-                }
+                y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: '#7f8c8d' } },
+                y1: { position: 'right', grid: { display: false }, ticks: { color: '#1976d2' } },
+                x: { grid: { display: false }, ticks: { color: '#7f8c8d' } }
             },
             plugins: { 
-                legend: { position: 'top', labels: { color: '#fff' } },
-                annotation: {
-                    annotations: {
-                        minLine: {
-                            type: 'line', scaleID: 'y', value: 0,
-                            borderColor: 'rgba(33, 150, 243, 0.5)', borderWidth: 1, borderDash: [5, 5],
-                            label: { display: true, position: 'start', backgroundColor: 'rgba(0,0,0,0.5)', color: '#2196f3', font: {size: 10} }
-                        },
-                        maxLine: {
-                            type: 'line', scaleID: 'y', value: 0,
-                            borderColor: 'rgba(229, 57, 53, 0.5)', borderWidth: 1, borderDash: [5, 5],
-                            label: { display: true, position: 'end', backgroundColor: 'rgba(0,0,0,0.5)', color: '#e53935', font: {size: 10} }
-                        }
-                    }
-                }
+                legend: { labels: { color: '#2c3e50' } },
+                annotation: { annotations: {
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(25,118,210,0.3)', borderWidth: 1, label: { display: true, backgroundColor: 'rgba(25,118,210,0.8)', color: '#fff' }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(211,47,47,0.3)', borderWidth: 1, label: { display: true, backgroundColor: 'rgba(211,47,47,0.8)', color: '#fff' }}
+                }}
             }
         }
     });
@@ -226,12 +193,11 @@
         const delta = t - dp;
         const valEl = document.getElementById('currDew');
         const cardEl = document.getElementById('dewCard');
-        let color = "#888888";
-        if (delta <= 2) color = "#f44336"; 
-        else if (delta <= 4) color = "#ff9800"; 
-        
+        let color = "#455a64";
+        if (delta <= 2) color = "#c62828"; 
+        else if (delta <= 4) color = "#ef6c00"; 
         valEl.style.color = color;
-        if(cardEl) cardEl.style.borderColor = delta <= 3 ? color : "#333";
+        if(cardEl) cardEl.style.borderColor = delta <= 3 ? color : "rgba(0,0,0,0.08)";
     }
 
     function calcAbsHum(t, h) {
@@ -243,96 +209,62 @@
             const r = await fetch(`${dbUrl}.json?shallow=true`);
             const s = await r.json();
             if (!s) return;
-            
             const sel = document.getElementById('sessionSelect');
             const currentVal = sel.value;
-            
-            const blacklist = [
-                "regenmesser", "null", "test", "hum", "humidity", "feuchte", 
-                "pressure", "temp", "temperatur", "temperature", "press", "pres",
-                "brightness", "lux"
-            ];
-            
-            const keys = Object.keys(s)
-                .filter(k => !blacklist.includes(k.toLowerCase()))
-                .sort()
-                .reverse();
-                
+            const blacklist = ["regenmesser", "null", "test", "hum", "humidity", "feuchte", "pressure", "temp", "temperatur", "temperature", "press", "pres", "brightness", "lux"];
+            const keys = Object.keys(s).filter(k => !blacklist.includes(k.toLowerCase())).sort().reverse();
             sel.innerHTML = "";
             keys.forEach(k => { 
                 const opt = document.createElement('option');
-                opt.value = k;
-                opt.textContent = k;
+                opt.value = k; opt.textContent = k;
                 sel.appendChild(opt); 
             });
-            
-            if (currentVal && keys.includes(currentVal)) {
-                sel.value = currentVal;
-            } else {
-                sel.selectedIndex = 0;
-            }
-        } catch (e) { console.error("Fehler beim Laden der Sessions:", e); }
+            if (currentVal && keys.includes(currentVal)) sel.value = currentVal;
+            else sel.selectedIndex = 0;
+        } catch (e) { console.error(e); }
     }
 
     async function updateData() {
         const limit = document.getElementById('limitSelect').value;
         const session = document.getElementById('sessionSelect').value;
         if (!session) return;
-
         try {
             const response = await fetch(`${dbUrl}${session}.json?orderBy="$key"&limitToLast=${limit}`);
             const data = await response.json();
             if (!data) return;
-
             const keys = Object.keys(data).sort();
             const labels = [], temps = [], hums = [];
             let lastValidEntry = null;
-
             keys.forEach(k => {
                 const entry = data[k];
                 if (entry && typeof entry === 'object') {
                     const t = parseFloat(entry.temp ?? entry.t ?? entry.temperature ?? 0);
                     const h = parseFloat(entry.hum ?? entry.h ?? entry.humidity ?? 0);
                     const timestamp = entry.ts || k.split('_').pop() || k;
-
-                    labels.push(timestamp);
-                    temps.push(t);
-                    hums.push(h);
+                    labels.push(timestamp); temps.push(t); hums.push(h);
                     lastValidEntry = { t, h };
                 }
             });
-
             if (lastValidEntry) {
                 const { t, h } = lastValidEntry;
                 const dp = calcDewPoint(t, h);
-                const abs = calcAbsHum(t, h);
-
                 document.getElementById('currTemp').textContent = t.toFixed(1) + "°";
                 document.getElementById('currHum').textContent = h.toFixed(0) + "%";
                 document.getElementById('currDew').textContent = dp.toFixed(1) + "°";
-                document.getElementById('currAbs').textContent = abs.toFixed(1) + "g";
-                
+                document.getElementById('currAbs').textContent = calcAbsHum(t, h).toFixed(1) + "g";
                 updateDewColor(t, dp);
-
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
                 chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1);
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
                 chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1);
-
-                const minH = Math.min(...hums);
-                const maxH = Math.max(...hums);
-                chart.options.scales.y1.min = Math.max(0, Math.floor(minH - 5));
-                chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + 5));
             }
-
             chart.data.labels = labels;
             chart.data.datasets[0].data = temps;
             chart.data.datasets[1].data = hums;
-            chart.update();
-
-        } catch (e) { console.error("Fehler beim Daten-Update:", e); }
+            chart.update('none'); // Schnelles Update ohne Animation bei vielen Daten
+        } catch (e) { console.error(e); }
     }
 
     async function init() {
@@ -341,7 +273,6 @@
         setInterval(loadSessions, 60000); 
         setInterval(updateData, 10000); 
     }
-
     window.onload = init;
 </script>
 </body>
