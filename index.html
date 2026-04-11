@@ -16,6 +16,8 @@
             --card-bg: rgba(255, 255, 255, 0.9);
             --border: 1px solid rgba(0, 0, 0, 0.08);
             --shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+            --color-online: #4caf50;
+            --color-offline: #f44336;
         }
 
         body { 
@@ -35,6 +37,37 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 15px;
+            position: relative;
+        }
+
+        /* Status Indikator */
+        .status-bar {
+            grid-column: span 4;
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #7f8c8d;
+            margin-bottom: -5px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--color-offline);
+            border-radius: 50%;
+            margin-left: 8px;
+            transition: background-color 0.5s ease;
+        }
+        .status-dot.online {
+            background-color: var(--color-online);
+            box-shadow: 0 0 8px var(--color-online);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .card { 
@@ -45,6 +78,7 @@
             border: var(--border);
             text-align: center;
             box-shadow: var(--shadow);
+            position: relative;
         }
         .card h3 { 
             margin: 0 0 5px 0; 
@@ -53,7 +87,14 @@
             letter-spacing: 1.2px; 
             color: #7f8c8d;
         }
+        .val-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
         .val { font-size: 2rem; font-weight: 700; }
+        .trend { font-size: 1.2rem; font-weight: bold; }
         
         .c-temp .val { color: var(--color-temp); }
         .c-hum .val { color: var(--color-hum); }
@@ -67,7 +108,7 @@
             border-radius: 20px; 
             border: var(--border);
             box-shadow: var(--shadow);
-            height: 320px; /* Reduzierte Standardhöhe */
+            height: 300px;
         }
 
         .controls { 
@@ -96,20 +137,49 @@
 
         @media (max-width: 600px) {
             .container { grid-template-columns: 1fr 1fr; gap: 10px; }
-            .chart-wrapper, .controls { grid-column: span 2; }
-            .chart-wrapper { height: 260px; padding: 10px; } /* Noch kleiner für Handys */
-            .val { font-size: 1.6rem; }
-            body { padding: 10px; }
+            .status-bar, .chart-wrapper, .controls { grid-column: span 2; }
+            .chart-wrapper { height: 240px; }
+            .val { font-size: 1.5rem; }
+            .trend { font-size: 1rem; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card c-temp"><h3>Temperatur</h3><div id="currTemp" class="val">--</div></div>
-    <div class="card c-hum"><h3>Feuchte</h3><div id="currHum" class="val">--</div></div>
-    <div id="dewCard" class="card c-dew"><h3>Taupunkt</h3><div id="currDew" class="val">--</div></div>
-    <div class="card c-abs"><h3>Abs. Feuchte</h3><div id="currAbs" class="val">--</div></div>
+    <div class="status-bar">
+        <span>LOGGER STATUS</span>
+        <div id="statusDot" class="status-dot"></div>
+    </div>
+
+    <div class="card c-temp">
+        <h3>Temperatur</h3>
+        <div class="val-container">
+            <div id="currTemp" class="val">--</div>
+            <div id="tempTrend" class="trend"></div>
+        </div>
+    </div>
+    <div class="card c-hum">
+        <h3>Feuchte</h3>
+        <div class="val-container">
+            <div id="currHum" class="val">--</div>
+            <div id="humTrend" class="trend"></div>
+        </div>
+    </div>
+    <div id="dewCard" class="card c-dew">
+        <h3>Taupunkt</h3>
+        <div class="val-container">
+            <div id="currDew" class="val">--</div>
+            <div id="dewTrend" class="trend"></div>
+        </div>
+    </div>
+    <div class="card c-abs">
+        <h3>Abs. Feuchte</h3>
+        <div class="val-container">
+            <div id="currAbs" class="val">--</div>
+            <div id="absTrend" class="trend"></div>
+        </div>
+    </div>
 
     <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
@@ -123,11 +193,11 @@
         <div class="control-group">
             <label>ANSICHT</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="50">50 Punkte</option>
-                <option value="100" selected>100 Punkte</option>
-                <option value="500">500 Punkte</option>
-                <option value="1000">1000 Punkte</option>
-                <option value="2000">2000 Punkte</option>
+                <option value="50">50 Pkt</option>
+                <option value="100" selected>100 Pkt</option>
+                <option value="500">500 Pkt</option>
+                <option value="1000">1000 Pkt</option>
+                <option value="2000">2000 Pkt</option>
             </select>
         </div>
     </div>
@@ -138,6 +208,7 @@
 
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
+    let lastDataTimestamp = 0;
     
     const chart = new Chart(ctx, {
         type: 'line',
@@ -162,8 +233,7 @@
                     yAxisID: 'y1', 
                     tension: 0.3, 
                     pointRadius: 0,
-                    borderWidth: 1.5,
-                    borderDash: [] 
+                    borderWidth: 1.5
                 }
             ]
         },
@@ -193,19 +263,33 @@
         return (b * alpha) / (a - alpha);
     }
 
-    function updateDewColor(t, dp) {
-        const delta = t - dp;
-        const valEl = document.getElementById('currDew');
-        const cardEl = document.getElementById('dewCard');
-        let color = "#455a64";
-        if (delta <= 2) color = "#c62828"; 
-        else if (delta <= 4) color = "#ef6c00"; 
-        valEl.style.color = color;
-        if(cardEl) cardEl.style.borderColor = delta <= 3 ? color : "rgba(0,0,0,0.08)";
-    }
-
     function calcAbsHum(t, h) {
         return (6.112 * Math.exp((17.67 * t) / (t + 243.5)) * h * 2.1674) / (273.15 + t);
+    }
+
+    function updateTrend(elementId, current, previous) {
+        const el = document.getElementById(elementId);
+        if (previous === undefined || previous === null || current === previous) {
+            el.textContent = "→";
+            el.style.color = "#bdc3c7";
+        } else if (current > previous) {
+            el.textContent = "↑";
+            el.style.color = "#e74c3c";
+        } else {
+            el.textContent = "↓";
+            el.style.color = "#2ecc71";
+        }
+    }
+
+    function updateStatusIndicator() {
+        const dot = document.getElementById('statusDot');
+        const now = Date.now();
+        // Wenn letztes Update weniger als 65 Sekunden her ist (Logger sendet meist alle 10-60s)
+        if (lastDataTimestamp > 0 && (now - lastDataTimestamp) < 65000) {
+            dot.classList.add('online');
+        } else {
+            dot.classList.remove('online');
+        }
     }
 
     async function loadSessions() {
@@ -236,34 +320,63 @@
             const response = await fetch(`${dbUrl}${session}.json?orderBy="$key"&limitToLast=${limit}`);
             const data = await response.json();
             if (!data) return;
+
             const keys = Object.keys(data).sort();
-            const labels = [], temps = [], hums = [];
-            let lastValidEntry = null;
+            const labels = [], temps = [], hums = [], dews = [], absHums = [];
+            
             keys.forEach(k => {
                 const entry = data[k];
                 if (entry && typeof entry === 'object') {
                     const t = parseFloat(entry.temp ?? entry.t ?? entry.temperature ?? 0);
                     const h = parseFloat(entry.hum ?? entry.h ?? entry.humidity ?? 0);
                     const timestamp = entry.ts || k.split('_').pop() || k;
-                    labels.push(timestamp); temps.push(t); hums.push(h);
-                    lastValidEntry = { t, h };
+                    labels.push(timestamp);
+                    temps.push(t);
+                    hums.push(h);
+                    dews.push(calcDewPoint(t, h));
+                    absHums.push(calcAbsHum(t, h));
                 }
             });
-            if (lastValidEntry) {
-                const { t, h } = lastValidEntry;
-                const dp = calcDewPoint(t, h);
-                document.getElementById('currTemp').textContent = t.toFixed(1) + "°";
-                document.getElementById('currHum').textContent = h.toFixed(0) + "%";
-                document.getElementById('currDew').textContent = dp.toFixed(1) + "°";
-                document.getElementById('currAbs').textContent = calcAbsHum(t, h).toFixed(1) + "g";
-                updateDewColor(t, dp);
+
+            if (temps.length > 0) {
+                const idx = temps.length - 1;
+                const prevIdx = temps.length - 2;
+                
+                // Aktuelle Werte setzen
+                document.getElementById('currTemp').textContent = temps[idx].toFixed(1) + "°";
+                document.getElementById('currHum').textContent = hums[idx].toFixed(0) + "%";
+                document.getElementById('currDew').textContent = dews[idx].toFixed(1) + "°";
+                document.getElementById('currAbs').textContent = absHums[idx].toFixed(1) + "g";
+
+                // Trends berechnen
+                updateTrend('tempTrend', temps[idx], temps[prevIdx]);
+                updateTrend('humTrend', hums[idx], hums[prevIdx]);
+                updateTrend('dewTrend', dews[idx], dews[prevIdx]);
+                updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
+
+                // Status Zeitstempel (Logger-Aktivität)
+                lastDataTimestamp = Date.now();
+                updateStatusIndicator();
+
+                // Annotationen & Skalen
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
                 chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1);
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
                 chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1);
+                
+                // Dew Card Border Color Logic
+                const delta = temps[idx] - dews[idx];
+                const dewCard = document.getElementById('dewCard');
+                const dewVal = document.getElementById('currDew');
+                let dewColor = "#455a64";
+                if (delta <= 2) dewColor = "#c62828"; 
+                else if (delta <= 4) dewColor = "#ef6c00"; 
+                dewVal.style.color = dewColor;
+                dewCard.style.borderColor = delta <= 3 ? dewColor : "rgba(0,0,0,0.08)";
             }
+
             chart.data.labels = labels;
             chart.data.datasets[0].data = temps;
             chart.data.datasets[1].data = hums;
@@ -275,7 +388,8 @@
         await loadSessions();
         await updateData();
         setInterval(loadSessions, 60000); 
-        setInterval(updateData, 10000); 
+        setInterval(updateData, 10000);
+        setInterval(updateStatusIndicator, 5000); // Prüft den Online-Status alle 5s
     }
     window.onload = init;
 </script>
