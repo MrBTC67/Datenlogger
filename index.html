@@ -8,24 +8,26 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <style>
         :root {
-            --color-temp: #d32f2f;
-            --color-hum: #1976d2;
-            --color-abs: #388e3c;
-            --color-dew: #455a64;
+            --color-temp: #ff5252; /* Etwas helleres Rot für Dunkelmodus */
+            --color-hum: #448aff; /* Etwas helleres Blau */
+            --color-abs: #66bb6a;
+            --color-dew: #90a4ae;
             --color-volt: #fbc02d;
-            --bg-light: #f0f2f5;
-            --card-bg: rgba(255, 255, 255, 0.9);
-            --border: 1px solid rgba(0, 0, 0, 0.08);
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.05);
+            --bg-light: #121212;
+            --card-bg: rgba(30, 30, 30, 0.95); /* Dunkelgrauer Hintergrund */
+            --border: 1px solid rgba(255, 255, 255, 0.1);
+            --shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
             --color-online: #4caf50;
             --color-offline: #f44336;
+            --text-main: #ecf0f1;
+            --text-muted: #bdc3c7;
         }
 
         body { 
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            background: linear-gradient(135deg, #1a2a6c 0%, #203a43 50%, #2c5364 100%);
             background-attachment: fixed;
-            color: #2c3e50; 
+            color: var(--text-main); 
             margin: 0; 
             padding: 15px; 
             display: flex;
@@ -48,7 +50,7 @@
             align-items: center;
             font-size: 0.7rem;
             font-weight: 600;
-            color: #7f8c8d;
+            color: var(--text-muted);
             margin-bottom: -5px;
         }
 
@@ -88,7 +90,7 @@
             font-size: 0.65rem; 
             text-transform: uppercase; 
             letter-spacing: 1.1px; 
-            color: #7f8c8d;
+            color: var(--text-muted);
         }
 
         .val-container {
@@ -121,23 +123,25 @@
             display: flex; 
             justify-content: center; 
             gap: 15px; 
-            background: rgba(255, 255, 255, 0.5);
+            background: rgba(0, 0, 0, 0.3);
             padding: 10px;
             border-radius: 100px;
             border: var(--border);
+            flex-wrap: wrap;
         }
 
         .control-group { display: flex; align-items: center; gap: 8px; }
-        label { font-weight: 600; font-size: 0.7rem; color: #7f8c8d; }
+        label { font-weight: 600; font-size: 0.7rem; color: var(--text-muted); }
         
         select { 
-            background: white; 
-            color: #2c3e50; 
-            border: 1px solid #dcdde1; 
+            background: #2c3e50; 
+            color: white; 
+            border: 1px solid rgba(255,255,255,0.2); 
             padding: 4px 10px; 
             border-radius: 50px; 
             font-size: 11px;
             cursor: pointer;
+            outline: none;
         }
 
         @media (max-width: 800px) {
@@ -192,24 +196,24 @@
         </div>
     </div>
 
-    <!-- Haupt Chart -->
     <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
     </div>
 
-    <!-- Steuerung -->
     <div class="controls">
         <div class="control-group">
             <label>SESSION</label>
             <select id="sessionSelect" onchange="updateData()"></select>
         </div>
         <div class="control-group">
-            <label>DATENPUNKTE</label>
+            <label>ANSICHT</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="50">50</option>
-                <option value="100" selected>100</option>
-                <option value="300">300</option>
-                <option value="1000">Alle</option>
+                <option value="60">Letzte Stunde (~60 Pkt)</option>
+                <option value="180" selected>3 Stunden (~180 Pkt)</option>
+                <option value="360">6 Stunden (~360 Pkt)</option>
+                <option value="720">12 Stunden (~720 Pkt)</option>
+                <option value="1500">24 Stunden (~1500 Pkt)</option>
+                <option value="10000">Komplette Session</option>
             </select>
         </div>
     </div>
@@ -222,7 +226,6 @@
     const ctx = document.getElementById('astroChart').getContext('2d');
     let lastDataTimestamp = 0;
 
-    // Haupt-Chart (Temp & Hum)
     const chart = new Chart(ctx, {
         type: 'line',
         data: { 
@@ -235,13 +238,13 @@
                     tension: 0.3, 
                     pointRadius: 0,
                     borderWidth: 2.5,
-                    borderColor: '#d32f2f',
+                    borderColor: '#ff5252',
                     fill: true,
-                    backgroundColor: 'rgba(211, 47, 47, 0.05)'
+                    backgroundColor: 'rgba(255, 82, 82, 0.1)'
                 },
                 { 
                     label: 'Feuchte (%)', 
-                    borderColor: '#1976d2', 
+                    borderColor: '#448aff', 
                     data: [], 
                     yAxisID: 'y1', 
                     tension: 0.3, 
@@ -256,9 +259,9 @@
             interaction: { mode: 'index', intersect: false },
             scales: {
                 y: { 
-                    grid: { color: 'rgba(0,0,0,0.05)' }, 
+                    grid: { color: 'rgba(255,255,255,0.05)' }, 
                     ticks: { 
-                        color: '#d32f2f', 
+                        color: '#ff5252', 
                         font: { size: 10, weight: 'bold' },
                         callback: function(value) { return value.toFixed(1) + '°'; }
                     },
@@ -268,18 +271,21 @@
                     position: 'right', 
                     grid: { display: false }, 
                     ticks: { 
-                        color: '#1976d2', 
+                        color: '#448aff', 
                         font: { size: 10, weight: 'bold' },
                         callback: function(value) { return value.toFixed(0) + '%'; }
                     }
                 },
-                x: { ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } }
+                x: { 
+                    grid: { color: 'rgba(255,255,255,0.05)' },
+                    ticks: { color: '#bdc3c7', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } 
+                }
             },
             plugins: { 
-                legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } },
+                legend: { position: 'top', labels: { color: '#ecf0f1', boxWidth: 10, font: { size: 11 } } },
                 annotation: { annotations: {
-                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(25,118,210,0.3)', borderWidth: 1, label: { display: true, position: 'start', font: { size: 9 } }},
-                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(211,47,47,0.3)', borderWidth: 1, label: { display: true, position: 'end', font: { size: 9 } }}
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(68,138,255,0.4)', borderWidth: 1, label: { display: true, position: 'start', backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', font: { size: 9 } }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(255,82,82,0.4)', borderWidth: 1, label: { display: true, position: 'end', backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', font: { size: 9 } }}
                 }}
             }
         }
@@ -300,11 +306,11 @@
         const el = document.getElementById(elementId);
         if (!el) return;
         if (previous === undefined || previous === null || Math.abs(current - previous) < 0.01) {
-            el.textContent = "→"; el.style.color = "#bdc3c7";
+            el.textContent = "→"; el.style.color = "#7f8c8d";
         } else if (current > previous) {
-            el.textContent = "↑"; el.style.color = "#e74c3c";
+            el.textContent = "↑"; el.style.color = "#ff5252";
         } else {
-            el.textContent = "↓"; el.style.color = "#2ecc71";
+            el.textContent = "↓"; el.style.color = "#66bb6a";
         }
     }
 
@@ -356,7 +362,6 @@
                     const h = parseFloat(entry.h ?? 0);
                     const v = parseFloat(entry.v ?? 0);
                     const ts = entry.ts || k;
-                    
                     labels.push(ts);
                     temps.push(t);
                     hums.push(h);
@@ -369,42 +374,31 @@
             if (temps.length > 0) {
                 const idx = temps.length - 1;
                 const prevIdx = Math.max(0, temps.length - 2);
-                const currentV = volts[idx];
-                const currentH = hums[idx];
                 
-                // UI Update
                 document.getElementById('currTemp').textContent = temps[idx].toFixed(1) + "°";
-                document.getElementById('currHum').textContent = currentH.toFixed(0) + "%";
+                document.getElementById('currHum').textContent = hums[idx].toFixed(0) + "%";
                 document.getElementById('currDew').textContent = dews[idx].toFixed(1) + "°";
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1) + "g";
                 
                 const voltEl = document.getElementById('currVolt');
-                voltEl.textContent = currentV.toFixed(2) + "V";
-                
-                // Farblogik UB
-                if (currentV > 4.0) {
-                    voltEl.style.color = "#4caf50"; // Grün
-                } else if (currentV < 3.8) {
-                    voltEl.style.color = "#f44336"; // Rot
-                } else {
-                    voltEl.style.color = "#ff9800"; // Orange
-                }
+                voltEl.textContent = volts[idx].toFixed(2) + "V";
+                voltEl.style.color = volts[idx] > 4.0 ? "#4caf50" : (volts[idx] < 3.8 ? "#f44336" : "#ff9800");
 
-                // Trends
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
                 updateTrend('humTrend', hums[idx], hums[prevIdx]);
                 updateTrend('voltTrend', volts[idx], volts[prevIdx]);
                 updateTrend('dewTrend', dews[idx], dews[prevIdx]);
                 updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
 
-                // Charts & Skalierung Feuchte (±5%)
                 chart.data.labels = labels;
                 chart.data.datasets[0].data = temps;
                 chart.data.datasets[1].data = hums;
                 
-                // Feuchte Skala fixieren auf aktuelle Feuchte ± 5%
-                chart.options.scales.y1.min = Math.max(0, currentH - 5);
-                chart.options.scales.y1.max = Math.min(100, currentH + 5);
+                const minH = Math.min(...hums);
+                const maxH = Math.max(...hums);
+                const paddingH = 2; 
+                chart.options.scales.y1.min = Math.max(0, Math.floor(minH - paddingH));
+                chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + paddingH));
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
@@ -415,10 +409,8 @@
                 
                 chart.update('none');
 
-                // Taupunkt Warnung
                 const delta = temps[idx] - dews[idx];
-                const dewCard = document.getElementById('dewCard');
-                dewCard.style.border = delta < 3 ? "2px solid #c62828" : "1px solid rgba(0,0,0,0.08)";
+                document.getElementById('dewCard').style.border = delta < 3 ? "2px solid #ff5252" : "1px solid rgba(255,255,255,0.1)";
                 
                 lastDataTimestamp = Date.now();
                 updateStatusIndicator();
