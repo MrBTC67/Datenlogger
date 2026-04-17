@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Astro-Monitor Pro | Light Dashboard</title>
+    <title>Astro-Monitor Pro | Mobile Light Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -30,7 +30,7 @@
             background-color: var(--bg-main);
             color: var(--text-primary); 
             margin: 0; 
-            padding: 20px; 
+            padding: 15px; 
             display: flex;
             justify-content: center;
             min-height: 100vh;
@@ -41,7 +41,7 @@
             max-width: 1200px; 
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
+            gap: 15px;
         }
 
         header {
@@ -49,29 +49,27 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding-bottom: 10px;
+            padding: 5px 0 15px 0;
             border-bottom: 2px solid var(--card-border);
-            margin-bottom: 10px;
         }
 
         header h1 { 
             margin: 0; 
-            font-size: 1.25rem; 
+            font-size: 1.1rem; 
             font-weight: 700; 
-            letter-spacing: -0.5px;
-            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: -0.2px;
         }
 
         .status-indicator {
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            font-weight: 700;
+            font-size: 0.7rem;
+            font-weight: 800;
             background: white;
             padding: 6px 12px;
-            border-radius: 20px;
+            border-radius: 50px;
             border: 1px solid var(--card-border);
         }
 
@@ -93,41 +91,21 @@
         /* Metric Cards */
         .card { 
             background: var(--card-bg); 
-            padding: 20px; 
-            border-radius: 16px; 
+            padding: 15px; 
+            border-radius: 20px; 
             border: 1px solid var(--card-border);
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
             box-shadow: var(--shadow);
-            transition: all 0.2s ease;
-        }
-
-        .card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
         .card h3 { 
             margin: 0; 
-            font-size: 0.75rem; 
+            font-size: 0.65rem; 
             text-transform: uppercase; 
             letter-spacing: 0.05em; 
             color: var(--text-secondary);
-            font-weight: 600;
-        }
-
-        .icon-box {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: #f1f5f9;
         }
 
         .val-row {
@@ -136,67 +114,84 @@
             gap: 4px;
         }
 
-        .val { font-size: 2rem; font-weight: 700; color: var(--text-primary); }
-        .unit { font-size: 0.875rem; color: var(--text-secondary); font-weight: 500; }
-        .trend { font-size: 1.1rem; margin-left: auto; }
-        
-        /* Color Overrides */
-        .c-temp .icon-box { color: var(--accent-temp); background: #fee2e2; }
-        .c-hum .icon-box { color: var(--accent-hum); background: #dbeafe; }
-        .c-dew .icon-box { color: var(--accent-dew); background: #f1f5f9; }
-        .c-abs .icon-box { color: var(--accent-abs); background: #dcfce7; }
+        .val { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); }
+        .unit { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
+        .trend { font-size: 1rem; margin-left: auto; }
 
         /* Chart */
         .chart-wrapper { 
             grid-column: span 4;
             background: var(--card-bg); 
-            padding: 24px; 
-            border-radius: 20px; 
+            padding: 15px; 
+            border-radius: 24px; 
             border: 1px solid var(--card-border);
-            height: 400px;
+            height: 350px;
             box-shadow: var(--shadow);
         }
 
-        /* Controls */
+        /* Mobile-Friendly Vertical Controls */
         .controls { 
             grid-column: span 4;
             display: flex; 
-            justify-content: center; 
-            align-items: center;
-            gap: 24px; 
-            background: #f1f5f9;
-            padding: 12px 24px;
-            border-radius: 12px;
+            flex-direction: column;
+            gap: 12px; 
+            background: white;
+            padding: 20px;
+            border-radius: 24px;
             border: 1px solid var(--card-border);
+            box-shadow: var(--shadow-lg);
         }
 
-        .control-group { display: flex; align-items: center; gap: 12px; }
-        label { font-weight: 600; font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; }
+        .control-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+        }
+
+        label { 
+            font-weight: 700; 
+            font-size: 0.7rem; 
+            color: var(--text-secondary); 
+            text-transform: uppercase;
+            padding-left: 4px;
+        }
         
         select { 
-            background: white; 
+            background: #f8fafc; 
             color: var(--text-primary); 
             border: 1px solid var(--card-border); 
-            padding: 8px 16px; 
-            border-radius: 8px; 
-            font-size: 13px;
-            font-weight: 500;
+            padding: 14px 16px; 
+            border-radius: 12px; 
+            font-size: 15px; /* Larger font for mobile readability */
+            font-weight: 600;
+            width: 100%;
             cursor: pointer;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px;
+        }
+
+        .volt-display {
+            background: #fefce8;
+            border: 1px solid #fef08a;
+            padding: 14px 16px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         #currVolt {
-            font-weight: 700;
-            padding: 4px 12px;
-            background: white;
-            border-radius: 6px;
-            border: 1px solid var(--card-border);
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--accent-volt);
         }
 
-        @media (max-width: 900px) {
-            .container { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+        @media (max-width: 800px) {
+            .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
             header, .chart-wrapper, .controls { grid-column: span 2; }
-            .c-volt { grid-column: span 2; }
         }
     </style>
 </head>
@@ -207,17 +202,12 @@
         <h1>Astro Monitor <span style="color: var(--accent-hum);">Pro</span></h1>
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
-            <span id="statusText">Verbinde...</span>
+            <span id="statusText">...</span>
         </div>
     </header>
 
-    <div class="card c-temp">
-        <div class="card-header">
-            <h3>Temperatur</h3>
-            <div class="icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
-            </div>
-        </div>
+    <div class="card">
+        <h3>Temperatur</h3>
         <div class="val-row">
             <div id="currTemp" class="val">--</div>
             <div class="unit">°C</div>
@@ -225,13 +215,8 @@
         </div>
     </div>
 
-    <div class="card c-hum">
-        <div class="card-header">
-            <h3>Feuchte</h3>
-            <div class="icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
-            </div>
-        </div>
+    <div class="card">
+        <h3>Feuchte</h3>
         <div class="val-row">
             <div id="currHum" class="val">--</div>
             <div class="unit">%</div>
@@ -239,13 +224,8 @@
         </div>
     </div>
 
-    <div id="dewCard" class="card c-dew">
-        <div class="card-header">
-            <h3>Taupunkt</h3>
-            <div class="icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
-            </div>
-        </div>
+    <div id="dewCard" class="card">
+        <h3>Taupunkt</h3>
         <div class="val-row">
             <div id="currDew" class="val">--</div>
             <div class="unit">°C</div>
@@ -253,13 +233,8 @@
         </div>
     </div>
 
-    <div class="card c-abs">
-        <div class="card-header">
-            <h3>Abs. Feuchte</h3>
-            <div class="icon-box">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-            </div>
-        </div>
+    <div class="card">
+        <h3>Abs. Feuchte</h3>
         <div class="val-row">
             <div id="currAbs" class="val">--</div>
             <div class="unit">g/m³</div>
@@ -273,23 +248,28 @@
 
     <div class="controls">
         <div class="control-group">
-            <label>Session</label>
+            <label>Aktive Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
         </div>
+        
         <div class="control-group">
-            <label>Ansicht</label>
+            <label>Zeitraum Ansicht</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="60">1 Stunde</option>
-                <option value="180" selected>3 Stunden</option>
-                <option value="360">6 Stunden</option>
-                <option value="720">12 Stunden</option>
-                <option value="1500">24 Stunden</option>
+                <option value="60">Letzte 60 Minuten</option>
+                <option value="180" selected>Letzte 3 Stunden</option>
+                <option value="360">Letzte 6 Stunden</option>
+                <option value="720">Letzte 12 Stunden</option>
+                <option value="1500">Letzte 24 Stunden</option>
                 <option value="10000">Ganze Session</option>
             </select>
         </div>
+
         <div class="control-group">
-            <label>Batterie</label>
-            <div id="currVolt">-- V</div>
+            <label>Systemspannung</label>
+            <div class="volt-display">
+                <span style="font-size: 0.8rem; font-weight: 600; color: #854d0e;">UB-Spannung</span>
+                <div id="currVolt">-- V</div>
+            </div>
         </div>
     </div>
 </div>
@@ -325,8 +305,7 @@
                     tension: 0.35, 
                     pointRadius: 0,
                     borderWidth: 2,
-                    borderDash: [4, 4],
-                    backgroundColor: 'transparent'
+                    borderDash: [4, 4]
                 }
             ]
         },
@@ -337,23 +316,23 @@
             scales: {
                 y: { 
                     grid: { color: '#f1f5f9' }, 
-                    ticks: { color: '#dc2626', font: { weight: '600', size: 11 }, callback: v => v.toFixed(1) + '°' }
+                    ticks: { color: '#dc2626', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '°' }
                 },
                 y1: { 
                     position: 'right', 
                     grid: { display: false }, 
-                    ticks: { color: '#2563eb', font: { weight: '600', size: 11 }, callback: v => v.toFixed(0) + '%' }
+                    ticks: { color: '#2563eb', font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
                 },
                 x: { 
                     grid: { display: false },
-                    ticks: { color: '#64748b', font: { size: 10 }, autoSkip: true, maxTicksLimit: 12 } 
+                    ticks: { color: '#64748b', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8 } 
                 }
             },
             plugins: { 
-                legend: { position: 'top', align: 'center', labels: { color: '#1e293b', usePointStyle: true, boxWidth: 8, font: { weight: '600', size: 12 } } },
+                legend: { position: 'top', align: 'center', labels: { color: '#1e293b', boxWidth: 8, font: { weight: '600', size: 11 } } },
                 annotation: { annotations: {
-                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(37, 99, 235, 0.15)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#f8fafc', color: '#1e293b', font: { size: 10, weight: '700' }, padding: 4 }},
-                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(220, 38, 38, 0.15)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#f8fafc', color: '#1e293b', font: { size: 10, weight: '700' }, padding: 4 }}
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(37, 99, 235, 0.1)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#f8fafc', color: '#1e293b', font: { size: 9, weight: '700' } }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(220, 38, 38, 0.1)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#f8fafc', color: '#1e293b', font: { size: 9, weight: '700' } }}
                 }}
             }
         }
@@ -388,11 +367,11 @@
         const now = Date.now();
         if (lastDataTimestamp > 0 && (now - lastDataTimestamp) < 70000) {
             dot.classList.add('online');
-            txt.textContent = "VERBUNDEN";
+            txt.textContent = "LIVE";
             txt.style.color = "#16a34a";
         } else {
             dot.classList.remove('online');
-            txt.textContent = "TRENNUNG";
+            txt.textContent = "OFFLINE";
             txt.style.color = "#dc2626";
         }
     }
@@ -436,9 +415,7 @@
                     const v = parseFloat(entry.v ?? 0);
                     const ts = entry.ts || k;
                     labels.push(ts.split(' ')[1] || ts);
-                    temps.push(t);
-                    hums.push(h);
-                    volts.push(v);
+                    temps.push(t); hums.push(h); volts.push(v);
                     dews.push(calcDewPoint(t, h));
                     absHums.push(calcAbsHum(t, h));
                 }
@@ -474,21 +451,16 @@
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
-                chart.options.plugins.annotation.annotations.minLine.label.content = 'MIN ' + minT.toFixed(1) + '°';
+                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '°';
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
-                chart.options.plugins.annotation.annotations.maxLine.label.content = 'MAX ' + maxT.toFixed(1) + '°';
+                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '°';
                 
                 chart.update('none');
 
                 const delta = temps[idx] - dews[idx];
                 const dewCard = document.getElementById('dewCard');
-                if (delta < 3) {
-                    dewCard.style.borderColor = "#dc2626";
-                    dewCard.style.background = "#fff1f2";
-                } else {
-                    dewCard.style.borderColor = "var(--card-border)";
-                    dewCard.style.background = "var(--card-bg)";
-                }
+                dewCard.style.borderColor = delta < 3 ? "#dc2626" : "var(--card-border)";
+                dewCard.style.background = delta < 3 ? "#fff1f2" : "var(--card-bg)";
                 
                 lastDataTimestamp = Date.now();
                 updateStatusIndicator();
