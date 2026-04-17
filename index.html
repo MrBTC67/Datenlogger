@@ -15,7 +15,7 @@
             --card-border: #e2e8f0;
             --text-primary: #0f172a;
             --text-secondary: #64748b;
-            --accent-volt-bg: #ea580c; /* Dunkelorange */
+            --accent-volt-bg: #f0f9ff; /* Jetzt Hellblau */
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
@@ -170,17 +170,49 @@
 
         .volt-display {
             background: var(--accent-volt-bg);
-            border: 1px solid rgba(0,0,0,0.1);
+            border: 1px solid #bae6fd;
             padding: 16px;
             border-radius: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            color: white; /* Weißer Text auf dunkelorange */
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
         }
 
-        #currVolt { font-weight: 800; font-size: 1.2rem; }
+        .battery-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Akku Icon Styling */
+        .battery-icon {
+            width: 35px;
+            height: 18px;
+            border: 2px solid #64748b;
+            border-radius: 3px;
+            position: relative;
+            padding: 1px;
+        }
+        .battery-icon::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: 3px;
+            width: 3px;
+            height: 8px;
+            background: #64748b;
+            border-radius: 0 2px 2px 0;
+        }
+        .battery-level {
+            height: 100%;
+            width: 0%;
+            background: #22c55e;
+            border-radius: 1px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        #currVolt { font-weight: 800; font-size: 1.2rem; transition: color 0.3s ease; }
 
         @media (max-width: 800px) {
             .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -240,12 +272,16 @@
     </div>
 
     <div class="controls">
-        <!-- Akku Spannung jetzt ganz oben -->
         <div class="control-group">
             <label>Systemstatus</label>
             <div class="volt-display">
-                <span style="font-size: 0.85rem; font-weight: 600;">Akku Spannung: </span>
-                <div id="currVolt">-- V</div>
+                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Akku Spannung: </span>
+                <div class="battery-container">
+                    <div class="battery-icon">
+                        <div id="batLevel" class="battery-level"></div>
+                    </div>
+                    <div id="currVolt">-- V</div>
+                </div>
             </div>
         </div>
 
@@ -288,6 +324,13 @@
         if (h < 75) return '#16a34a';
         if (h < 90) return '#2563eb';
         return '#1e3a8a';
+    }
+
+    // Farbe für Spannung (1S LiPo/Li-Ion Logik)
+    function getVoltColor(v) {
+        if (v > 4.0) return '#16a34a'; // Grün
+        if (v > 3.7) return '#ea580c'; // Orange
+        return '#dc2626'; // Rot
     }
 
     const chart = new Chart(ctx, {
@@ -436,25 +479,32 @@
                 const curT = temps[idx];
                 const curH = hums[idx];
                 const curDP = dews[idx];
+                const curV = volts[idx];
 
-                const tempEl = document.getElementById('currTemp');
-                tempEl.textContent = curT.toFixed(1);
-                tempEl.style.color = getTempColor(curT);
+                // Werte & Farben setzen
+                document.getElementById('currTemp').textContent = curT.toFixed(1);
+                document.getElementById('currTemp').style.color = getTempColor(curT);
 
-                const humEl = document.getElementById('currHum');
-                humEl.textContent = curH.toFixed(0);
-                humEl.style.color = getHumColor(curH);
+                document.getElementById('currHum').textContent = curH.toFixed(0);
+                document.getElementById('currHum').style.color = getHumColor(curH);
 
-                const dewEl = document.getElementById('currDew');
-                dewEl.textContent = curDP.toFixed(1);
-                dewEl.style.color = getTempColor(curDP);
+                document.getElementById('currDew').textContent = curDP.toFixed(1);
+                document.getElementById('currDew').style.color = getTempColor(curDP);
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
                 
+                // Akku Update
                 const voltEl = document.getElementById('currVolt');
-                voltEl.textContent = volts[idx].toFixed(2) + " V";
-                // Innerer Text bleibt weiß, aber das Icon/Dot Prinzip könnte man hier überlegen. 
-                // Für Klaus lassen wir es simpel: Weißer Text auf dem neuen Hintergrund.
+                const batEl = document.getElementById('batLevel');
+                const vColor = getVoltColor(curV);
+                
+                voltEl.textContent = curV.toFixed(2) + " V";
+                voltEl.style.color = vColor;
+                
+                // Akku-Prozent Logik (Annahme 1S: 3.4V leer, 4.2V voll)
+                let batPct = Math.max(0, Math.min(100, (curV - 3.4) / (4.2 - 3.4) * 100));
+                batEl.style.width = batPct + "%";
+                batEl.style.backgroundColor = vColor;
 
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
                 updateTrend('humTrend', hums[idx], hums[prevIdx]);
@@ -479,6 +529,7 @@
                 
                 chart.update('none');
 
+                // Taupunkt Warnung
                 const delta = curT - curDP;
                 const dpCard = document.getElementById('dewPointCard');
                 if (delta < 3) {
