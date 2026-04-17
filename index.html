@@ -9,11 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --accent-temp: #dc2626;
-            --accent-hum: #2563eb;
-            --accent-abs: #16a34a;
-            --accent-dew: #475569;
-            --accent-volt: #d97706;
             --bg-main: #f8fafc;
             --card-bg: #ffffff;
             --card-border: #e2e8f0;
@@ -41,7 +36,7 @@
             max-width: 1200px; 
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
+            gap: 12px;
         }
 
         header {
@@ -88,7 +83,6 @@
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        /* Metric Cards */
         .card { 
             background: var(--card-bg); 
             padding: 15px; 
@@ -98,6 +92,7 @@
             flex-direction: column;
             gap: 8px;
             box-shadow: var(--shadow);
+            transition: border-color 0.3s ease, background 0.3s ease;
         }
 
         .card h3 { 
@@ -114,11 +109,10 @@
             gap: 4px;
         }
 
-        .val { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); }
+        .val { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); transition: color 0.3s ease; }
         .unit { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
         .trend { font-size: 1rem; margin-left: auto; }
 
-        /* Chart */
         .chart-wrapper { 
             grid-column: span 4;
             background: var(--card-bg); 
@@ -129,7 +123,6 @@
             box-shadow: var(--shadow);
         }
 
-        /* Mobile-Friendly Vertical Controls */
         .controls { 
             grid-column: span 4;
             display: flex; 
@@ -162,7 +155,7 @@
             border: 1px solid var(--card-border); 
             padding: 14px 16px; 
             border-radius: 12px; 
-            font-size: 15px; /* Larger font for mobile readability */
+            font-size: 15px; 
             font-weight: 600;
             width: 100%;
             cursor: pointer;
@@ -174,8 +167,8 @@
         }
 
         .volt-display {
-            background: #fefce8;
-            border: 1px solid #fef08a;
+            background: #f8fafc;
+            border: 1px solid var(--card-border);
             padding: 14px 16px;
             border-radius: 12px;
             display: flex;
@@ -183,11 +176,7 @@
             align-items: center;
         }
 
-        #currVolt {
-            font-weight: 800;
-            font-size: 1.1rem;
-            color: var(--accent-volt);
-        }
+        #currVolt { font-weight: 800; font-size: 1.1rem; }
 
         @media (max-width: 800px) {
             .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -199,14 +188,15 @@
 
 <div class="container">
     <header>
-        <h1>Astro Monitor <span style="color: var(--accent-hum);">Pro</span></h1>
+        <h1>Astro Monitor <span style="color: #2563eb;">Pro</span></h1>
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <span id="statusText">...</span>
         </div>
     </header>
 
-    <div class="card">
+    <!-- Temperatur -->
+    <div class="card" id="tempCard">
         <h3>Temperatur</h3>
         <div class="val-row">
             <div id="currTemp" class="val">--</div>
@@ -215,7 +205,8 @@
         </div>
     </div>
 
-    <div class="card">
+    <!-- Feuchte -->
+    <div class="card" id="humCard">
         <h3>Feuchte</h3>
         <div class="val-row">
             <div id="currHum" class="val">--</div>
@@ -224,7 +215,8 @@
         </div>
     </div>
 
-    <div id="dewCard" class="card">
+    <!-- Taupunkt -->
+    <div class="card" id="dewPointCard">
         <h3>Taupunkt</h3>
         <div class="val-row">
             <div id="currDew" class="val">--</div>
@@ -233,6 +225,7 @@
         </div>
     </div>
 
+    <!-- Abs. Feuchte -->
     <div class="card">
         <h3>Abs. Feuchte</h3>
         <div class="val-row">
@@ -267,7 +260,7 @@
         <div class="control-group">
             <label>Systemspannung</label>
             <div class="volt-display">
-                <span style="font-size: 0.8rem; font-weight: 600; color: #854d0e;">UB-Spannung</span>
+                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Akku Spannung: </span>
                 <div id="currVolt">-- V</div>
             </div>
         </div>
@@ -280,6 +273,22 @@
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     let lastDataTimestamp = 0;
+
+    // Farblogik Funktionen
+    function getTempColor(t) {
+        if (t <= 0) return '#8b5cf6'; // Violett (Frost)
+        if (t <= 10) return '#3b82f6'; // Blau (Kalt)
+        if (t <= 20) return '#0d9488'; // Teal (Frisch)
+        if (t <= 28) return '#f59e0b'; // Orange (Warm)
+        return '#ef4444'; // Rot (Heiß)
+    }
+
+    function getHumColor(h) {
+        if (h < 40) return '#b45309'; // Bernstein (Trocken)
+        if (h < 75) return '#16a34a'; // Grün (Normal)
+        if (h < 90) return '#2563eb'; // Blau (Feucht)
+        return '#1e3a8a'; // Dunkelblau (Sehr Feucht / Tau-Gefahr)
+    }
 
     const chart = new Chart(ctx, {
         type: 'line',
@@ -425,9 +434,23 @@
                 const idx = temps.length - 1;
                 const prevIdx = Math.max(0, temps.length - 2);
                 
-                document.getElementById('currTemp').textContent = temps[idx].toFixed(1);
-                document.getElementById('currHum').textContent = hums[idx].toFixed(0);
-                document.getElementById('currDew').textContent = dews[idx].toFixed(1);
+                const curT = temps[idx];
+                const curH = hums[idx];
+                const curDP = dews[idx];
+
+                // Werte & Farben setzen
+                const tempEl = document.getElementById('currTemp');
+                tempEl.textContent = curT.toFixed(1);
+                tempEl.style.color = getTempColor(curT);
+
+                const humEl = document.getElementById('currHum');
+                humEl.textContent = curH.toFixed(0);
+                humEl.style.color = getHumColor(curH);
+
+                const dewEl = document.getElementById('currDew');
+                dewEl.textContent = curDP.toFixed(1);
+                dewEl.style.color = getTempColor(curDP);
+
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
                 
                 const voltEl = document.getElementById('currVolt');
@@ -457,10 +480,16 @@
                 
                 chart.update('none');
 
-                const delta = temps[idx] - dews[idx];
-                const dewCard = document.getElementById('dewCard');
-                dewCard.style.borderColor = delta < 3 ? "#dc2626" : "var(--card-border)";
-                dewCard.style.background = delta < 3 ? "#fff1f2" : "var(--card-bg)";
+                // Taupunkt Warnung
+                const delta = curT - curDP;
+                const dpCard = document.getElementById('dewPointCard');
+                if (delta < 3) {
+                    dpCard.style.borderColor = "#ef4444";
+                    dpCard.style.background = "#fff1f2";
+                } else {
+                    dpCard.style.borderColor = "var(--card-border)";
+                    dpCard.style.background = "var(--card-bg)";
+                }
                 
                 lastDataTimestamp = Date.now();
                 updateStatusIndicator();
