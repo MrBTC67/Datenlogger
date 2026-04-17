@@ -15,6 +15,7 @@
             --card-border: #e2e8f0;
             --text-primary: #0f172a;
             --text-secondary: #64748b;
+            --accent-volt-bg: #ea580c; /* Dunkelorange */
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
@@ -128,7 +129,7 @@
             grid-column: span 4;
             display: flex; 
             flex-direction: column;
-            gap: 12px; 
+            gap: 16px; 
             background: white;
             padding: 20px;
             border-radius: 24px;
@@ -168,16 +169,18 @@
         }
 
         .volt-display {
-            background: #f8fafc;
-            border: 1px solid var(--card-border);
-            padding: 14px 16px;
-            border-radius: 12px;
+            background: var(--accent-volt-bg);
+            border: 1px solid rgba(0,0,0,0.1);
+            padding: 16px;
+            border-radius: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            color: white; /* Weißer Text auf dunkelorange */
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        #currVolt { font-weight: 800; font-size: 1.1rem; }
+        #currVolt { font-weight: 800; font-size: 1.2rem; }
 
         @media (max-width: 800px) {
             .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
@@ -237,6 +240,15 @@
     </div>
 
     <div class="controls">
+        <!-- Akku Spannung jetzt ganz oben -->
+        <div class="control-group">
+            <label>Systemstatus</label>
+            <div class="volt-display">
+                <span style="font-size: 0.85rem; font-weight: 600;">Akku Spannung: </span>
+                <div id="currVolt">-- V</div>
+            </div>
+        </div>
+
         <div class="control-group">
             <label>Aktive Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
@@ -252,14 +264,6 @@
                 <option value="1500">Letzte 24 Stunden</option>
                 <option value="10000">Ganze Session</option>
             </select>
-        </div>
-
-        <div class="control-group">
-            <label>Systemspannung</label>
-            <div class="volt-display">
-                <span style="font-size: 0.8rem; font-weight: 600; color: var(--text-secondary);">Akku Spannung: </span>
-                <div id="currVolt">-- V</div>
-            </div>
         </div>
     </div>
 </div>
@@ -449,7 +453,8 @@
                 
                 const voltEl = document.getElementById('currVolt');
                 voltEl.textContent = volts[idx].toFixed(2) + " V";
-                voltEl.style.color = volts[idx] > 4.0 ? "#16a34a" : (volts[idx] < 3.8 ? "#dc2626" : "#d97706");
+                // Innerer Text bleibt weiß, aber das Icon/Dot Prinzip könnte man hier überlegen. 
+                // Für Klaus lassen wir es simpel: Weißer Text auf dem neuen Hintergrund.
 
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
                 updateTrend('humTrend', hums[idx], hums[prevIdx]);
