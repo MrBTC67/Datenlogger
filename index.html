@@ -11,6 +11,7 @@
         :root {
             --bg-main: #f8fafc;
             --card-bg: #ffffff;
+            --chart-bg: #f0f9ff; /* Hellblau für den Chart */
             --card-border: #e2e8f0;
             --text-primary: #0f172a;
             --text-secondary: #64748b;
@@ -115,7 +116,7 @@
 
         .chart-wrapper { 
             grid-column: span 4;
-            background: var(--card-bg); 
+            background: var(--chart-bg); 
             padding: 15px; 
             border-radius: 24px; 
             border: 1px solid var(--card-border);
@@ -195,7 +196,6 @@
         </div>
     </header>
 
-    <!-- Temperatur -->
     <div class="card" id="tempCard">
         <h3>Temperatur</h3>
         <div class="val-row">
@@ -205,7 +205,6 @@
         </div>
     </div>
 
-    <!-- Feuchte -->
     <div class="card" id="humCard">
         <h3>Feuchte</h3>
         <div class="val-row">
@@ -215,8 +214,7 @@
         </div>
     </div>
 
-    <!-- Taupunkt -->
-    <div class="card" id="dewPointCard">
+    <div id="dewPointCard" class="card">
         <h3>Taupunkt</h3>
         <div class="val-row">
             <div id="currDew" class="val">--</div>
@@ -225,7 +223,6 @@
         </div>
     </div>
 
-    <!-- Abs. Feuchte -->
     <div class="card">
         <h3>Abs. Feuchte</h3>
         <div class="val-row">
@@ -274,20 +271,19 @@
     const ctx = document.getElementById('astroChart').getContext('2d');
     let lastDataTimestamp = 0;
 
-    // Farblogik Funktionen
     function getTempColor(t) {
-        if (t <= 0) return '#8b5cf6'; // Violett (Frost)
-        if (t <= 10) return '#3b82f6'; // Blau (Kalt)
-        if (t <= 20) return '#0d9488'; // Teal (Frisch)
-        if (t <= 28) return '#f59e0b'; // Orange (Warm)
-        return '#ef4444'; // Rot (Heiß)
+        if (t <= 0) return '#8b5cf6';
+        if (t <= 10) return '#3b82f6';
+        if (t <= 20) return '#0d9488';
+        if (t <= 28) return '#f59e0b';
+        return '#ef4444';
     }
 
     function getHumColor(h) {
-        if (h < 40) return '#b45309'; // Bernstein (Trocken)
-        if (h < 75) return '#16a34a'; // Grün (Normal)
-        if (h < 90) return '#2563eb'; // Blau (Feucht)
-        return '#1e3a8a'; // Dunkelblau (Sehr Feucht / Tau-Gefahr)
+        if (h < 40) return '#b45309';
+        if (h < 75) return '#16a34a';
+        if (h < 90) return '#2563eb';
+        return '#1e3a8a';
     }
 
     const chart = new Chart(ctx, {
@@ -324,7 +320,7 @@
             interaction: { mode: 'index', intersect: false },
             scales: {
                 y: { 
-                    grid: { color: '#f1f5f9' }, 
+                    grid: { color: 'rgba(255, 255, 255, 0.5)' }, 
                     ticks: { color: '#dc2626', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '°' }
                 },
                 y1: { 
@@ -340,8 +336,8 @@
             plugins: { 
                 legend: { position: 'top', align: 'center', labels: { color: '#1e293b', boxWidth: 8, font: { weight: '600', size: 11 } } },
                 annotation: { annotations: {
-                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(37, 99, 235, 0.1)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#f8fafc', color: '#1e293b', font: { size: 9, weight: '700' } }},
-                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(220, 38, 38, 0.1)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#f8fafc', color: '#1e293b', font: { size: 9, weight: '700' } }}
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(37, 99, 235, 0.2)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#f0f9ff', color: '#1e293b', font: { size: 9, weight: '700' } }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(220, 38, 38, 0.2)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#f0f9ff', color: '#1e293b', font: { size: 9, weight: '700' } }}
                 }}
             }
         }
@@ -438,7 +434,6 @@
                 const curH = hums[idx];
                 const curDP = dews[idx];
 
-                // Werte & Farben setzen
                 const tempEl = document.getElementById('currTemp');
                 tempEl.textContent = curT.toFixed(1);
                 tempEl.style.color = getTempColor(curT);
@@ -480,7 +475,6 @@
                 
                 chart.update('none');
 
-                // Taupunkt Warnung
                 const delta = curT - curDP;
                 const dpCard = document.getElementById('dewPointCard');
                 if (delta < 3) {
