@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Astro-Monitor Pro | Mobile Light Dashboard</title>
+    <title>Daten Logger V1.0 | Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -11,7 +11,7 @@
         :root {
             --bg-main: #f8fafc;
             --card-bg: #ffffff;
-            --chart-bg: #f0f9ff; /* Hellblau für den Chart */
+            --chart-bg: #f0f9ff;
             --card-border: #e2e8f0;
             --text-primary: #0f172a;
             --text-secondary: #64748b;
@@ -189,7 +189,7 @@
 
 <div class="container">
     <header>
-        <h1>Astro Monitor <span style="color: #2563eb;">Pro</span></h1>
+        <h1>Daten Logger <span style="color: #2563eb;">V1.0</span></h1>
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <span id="statusText">...</span>
@@ -304,12 +304,12 @@
                 },
                 { 
                     label: 'Feuchtigkeit', 
-                    borderColor: 'rgba(37, 99, 235, 0.35)', // Dezent schwach
+                    borderColor: 'rgba(37, 99, 235, 0.35)',
                     data: [], 
                     yAxisID: 'y1', 
                     tension: 0.35, 
                     pointRadius: 0,
-                    borderWidth: 1.5 // Dünnere durchgehende Linie
+                    borderWidth: 1.5
                 }
             ]
         },
