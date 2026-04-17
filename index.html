@@ -3,196 +3,261 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Astro-Monitor Pro | Logger</title>
+    <title>Astro-Monitor Pro | Deep Space Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <style>
         :root {
-            --color-temp: #ff5252; /* Etwas helleres Rot für Dunkelmodus */
-            --color-hum: #448aff; /* Etwas helleres Blau */
-            --color-abs: #66bb6a;
-            --color-dew: #90a4ae;
-            --color-volt: #fbc02d;
-            --bg-light: #121212;
-            --card-bg: rgba(30, 30, 30, 0.95); /* Dunkelgrauer Hintergrund */
-            --border: 1px solid rgba(255, 255, 255, 0.1);
-            --shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-            --color-online: #4caf50;
-            --color-offline: #f44336;
-            --text-main: #ecf0f1;
-            --text-muted: #bdc3c7;
+            --accent-temp: #ff5252;
+            --accent-hum: #448aff;
+            --accent-abs: #66bb6a;
+            --accent-dew: #cfd8dc;
+            --accent-volt: #ffd740;
+            --glass-bg: rgba(15, 23, 42, 0.8);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --bg-gradient: radial-gradient(circle at top right, #1e293b, #0f172a, #020617);
         }
 
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
         body { 
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; 
-            background: linear-gradient(135deg, #1a2a6c 0%, #203a43 50%, #2c5364 100%);
+            font-family: 'Inter', -apple-system, sans-serif; 
+            background: var(--bg-gradient);
             background-attachment: fixed;
-            color: var(--text-main); 
+            color: var(--text-primary); 
             margin: 0; 
-            padding: 15px; 
+            padding: 20px; 
             display: flex;
             justify-content: center;
+            min-height: 100vh;
         }
 
         .container { 
             width: 100%;
-            max-width: 1100px; 
+            max-width: 1200px; 
             display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 12px;
-            position: relative;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
         }
 
-        .status-bar {
-            grid-column: span 5;
+        /* Header Area */
+        header {
+            grid-column: span 4;
             display: flex;
-            justify-content: flex-end;
+            justify-content: space-between;
+            align-items: flex-end;
+            padding: 10px 5px;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 10px;
+        }
+
+        header h1 { 
+            margin: 0; 
+            font-size: 1.4rem; 
+            font-weight: 300; 
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .status-indicator {
+            display: flex;
             align-items: center;
-            font-size: 0.7rem;
+            gap: 10px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
             font-weight: 600;
-            color: var(--text-muted);
-            margin-bottom: -5px;
         }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background-color: var(--color-offline);
+        .dot {
+            width: 10px;
+            height: 10px;
+            background: #ef4444;
             border-radius: 50%;
-            margin-left: 8px;
-            transition: background-color 0.5s ease;
+            transition: 0.5s;
         }
 
-        .status-dot.online {
-            background-color: var(--color-online);
-            box-shadow: 0 0 8px var(--color-online);
+        .dot.online {
+            background: #10b981;
+            box-shadow: 0 0 12px #10b981;
             animation: pulse 2s infinite;
         }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+        /* Metric Cards */
+        .card { 
+            background: var(--glass-bg); 
+            backdrop-filter: blur(16px);
+            padding: 20px; 
+            border-radius: 24px; 
+            border: 1px solid var(--glass-border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            transition: transform 0.3s ease;
         }
 
-        .card { 
-            background: var(--card-bg); 
-            backdrop-filter: blur(10px);
-            padding: 12px 5px; 
-            border-radius: 18px; 
-            border: var(--border);
-            text-align: center;
-            box-shadow: var(--shadow);
+        .card:hover { transform: translateY(-4px); }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         .card h3 { 
-            margin: 0 0 5px 0; 
-            font-size: 0.65rem; 
+            margin: 0; 
+            font-size: 0.7rem; 
             text-transform: uppercase; 
-            letter-spacing: 1.1px; 
-            color: var(--text-muted);
+            letter-spacing: 1.5px; 
+            color: var(--text-secondary);
         }
 
-        .val-container {
+        .icon-box {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            background: rgba(255,255,255,0.03);
         }
 
-        .val { font-size: 1.6rem; font-weight: 700; }
-        .trend { font-size: 1.1rem; font-weight: bold; }
+        .val-row {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+        }
+
+        .val { font-size: 2.2rem; font-weight: 200; letter-spacing: -1px; }
+        .unit { font-size: 1rem; color: var(--text-secondary); font-weight: 400; }
+        .trend { font-size: 1rem; font-weight: bold; }
         
-        .c-temp .val { color: var(--color-temp); }
-        .c-hum .val { color: var(--color-hum); }
-        .c-abs .val { color: var(--color-abs); }
-        .c-dew .val { color: var(--color-dew); }
+        /* Specific Colors */
+        .c-temp .val, .c-temp svg { color: var(--accent-temp); }
+        .c-hum .val, .c-hum svg { color: var(--accent-hum); }
+        .c-dew .val, .c-dew svg { color: var(--accent-dew); }
+        .c-abs .val, .c-abs svg { color: var(--accent-abs); }
+        .c-volt .val { color: var(--accent-volt); }
 
+        /* Main Chart Area */
         .chart-wrapper { 
-            grid-column: span 5;
-            background: var(--card-bg); 
-            padding: 15px; 
-            border-radius: 20px; 
-            border: var(--border);
-            box-shadow: var(--shadow);
-            height: 320px;
+            grid-column: span 4;
+            background: var(--glass-bg); 
+            backdrop-filter: blur(16px);
+            padding: 24px; 
+            border-radius: 32px; 
+            border: 1px solid var(--glass-border);
+            height: 400px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.4);
         }
 
+        /* Controls Area */
         .controls { 
-            grid-column: span 5;
+            grid-column: span 4;
             display: flex; 
             justify-content: center; 
-            gap: 15px; 
-            background: rgba(0, 0, 0, 0.3);
-            padding: 10px;
+            gap: 20px; 
+            background: rgba(255, 255, 255, 0.03);
+            padding: 12px;
             border-radius: 100px;
-            border: var(--border);
-            flex-wrap: wrap;
+            border: 1px solid var(--glass-border);
         }
 
-        .control-group { display: flex; align-items: center; gap: 8px; }
-        label { font-weight: 600; font-size: 0.7rem; color: var(--text-muted); }
+        .control-group { display: flex; align-items: center; gap: 10px; }
+        label { font-weight: 700; font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px; }
         
         select { 
-            background: #2c3e50; 
+            background: #1e293b; 
             color: white; 
-            border: 1px solid rgba(255,255,255,0.2); 
-            padding: 4px 10px; 
+            border: 1px solid var(--glass-border); 
+            padding: 6px 16px; 
             border-radius: 50px; 
-            font-size: 11px;
+            font-size: 12px;
             cursor: pointer;
             outline: none;
+            transition: 0.2s;
+        }
+        select:hover { background: #334155; }
+
+        @media (max-width: 900px) {
+            .container { grid-template-columns: repeat(2, 1fr); }
+            header, .chart-wrapper, .controls { grid-column: span 2; }
+            .c-volt { grid-column: span 2; }
         }
 
-        @media (max-width: 800px) {
-            .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            .status-bar, .chart-wrapper, .controls { grid-column: span 2; }
-            .c-volt { grid-column: span 2; }
+        @media (max-width: 500px) {
+            .val { font-size: 1.8rem; }
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="status-bar">
-        <span>LOGGER AKTIVITÄT</span>
-        <div id="statusDot" class="status-dot"></div>
-    </div>
+    <header>
+        <h1>Astro Monitor <span style="font-weight: 700;">PRO</span></h1>
+        <div class="status-indicator">
+            <span id="statusText">SYSTEM OFFLINE</span>
+            <div id="statusDot" class="dot"></div>
+        </div>
+    </header>
 
-    <!-- Messwerte Cards -->
+    <!-- Cards with SVGs -->
     <div class="card c-temp">
-        <h3>Temperatur</h3>
-        <div class="val-container">
+        <div class="card-header">
+            <h3>Temperatur</h3>
+            <div class="icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>
+            </div>
+        </div>
+        <div class="val-row">
             <div id="currTemp" class="val">--</div>
+            <div class="unit">°C</div>
             <div id="tempTrend" class="trend"></div>
         </div>
     </div>
+
     <div class="card c-hum">
-        <h3>Feuchte</h3>
-        <div class="val-container">
+        <div class="card-header">
+            <h3>Feuchte</h3>
+            <div class="icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>
+            </div>
+        </div>
+        <div class="val-row">
             <div id="currHum" class="val">--</div>
+            <div class="unit">%</div>
             <div id="humTrend" class="trend"></div>
         </div>
     </div>
+
     <div id="dewCard" class="card c-dew">
-        <h3>Taupunkt</h3>
-        <div class="val-container">
+        <div class="card-header">
+            <h3>Taupunkt</h3>
+            <div class="icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+            </div>
+        </div>
+        <div class="val-row">
             <div id="currDew" class="val">--</div>
+            <div class="unit">°C</div>
             <div id="dewTrend" class="trend"></div>
         </div>
     </div>
+
     <div class="card c-abs">
-        <h3>Abs. Feuchte</h3>
-        <div class="val-container">
-            <div id="currAbs" class="val">--</div>
-            <div id="absTrend" class="trend"></div>
+        <div class="card-header">
+            <h3>Abs. Feuchte</h3>
+            <div class="icon-box">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
         </div>
-    </div>
-    <div class="card c-volt">
-        <h3>Spannung $U_B$</h3>
-        <div class="val-container">
-            <div id="currVolt" class="val">--</div>
-            <div id="voltTrend" class="trend"></div>
+        <div class="val-row">
+            <div id="currAbs" class="val">--</div>
+            <div class="unit">g/m³</div>
+            <div id="absTrend" class="trend"></div>
         </div>
     </div>
 
@@ -202,19 +267,23 @@
 
     <div class="controls">
         <div class="control-group">
-            <label>SESSION</label>
+            <label>Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
         </div>
         <div class="control-group">
-            <label>ANSICHT</label>
+            <label>Ansicht</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="60">Letzte Stunde (~60 Pkt)</option>
-                <option value="180" selected>3 Stunden (~180 Pkt)</option>
-                <option value="360">6 Stunden (~360 Pkt)</option>
-                <option value="720">12 Stunden (~720 Pkt)</option>
-                <option value="1500">24 Stunden (~1500 Pkt)</option>
+                <option value="60">1 Stunde</option>
+                <option value="180" selected>3 Stunden</option>
+                <option value="360">6 Stunden</option>
+                <option value="720">12 Stunden</option>
+                <option value="1500">24 Stunden</option>
                 <option value="10000">Komplette Session</option>
             </select>
+        </div>
+        <div class="control-group">
+            <label>Spannung</label>
+            <div id="currVolt" style="font-family: monospace; font-size: 14px; font-weight: bold; color: var(--accent-volt);">-- V</div>
         </div>
     </div>
 </div>
@@ -226,30 +295,36 @@
     const ctx = document.getElementById('astroChart').getContext('2d');
     let lastDataTimestamp = 0;
 
+    // Gradient für den Chart
+    const tempGradient = ctx.createLinearGradient(0, 0, 0, 400);
+    tempGradient.addColorStop(0, 'rgba(255, 82, 82, 0.2)');
+    tempGradient.addColorStop(1, 'rgba(255, 82, 82, 0)');
+
     const chart = new Chart(ctx, {
         type: 'line',
         data: { 
             labels: [], 
             datasets: [
                 { 
-                    label: 'Temp (°C)', 
+                    label: 'Temperatur', 
                     data: [], 
                     yAxisID: 'y', 
-                    tension: 0.3, 
+                    tension: 0.4, 
                     pointRadius: 0,
-                    borderWidth: 2.5,
+                    borderWidth: 3,
                     borderColor: '#ff5252',
                     fill: true,
-                    backgroundColor: 'rgba(255, 82, 82, 0.1)'
+                    backgroundColor: tempGradient
                 },
                 { 
-                    label: 'Feuchte (%)', 
+                    label: 'Feuchtigkeit', 
                     borderColor: '#448aff', 
                     data: [], 
                     yAxisID: 'y1', 
-                    tension: 0.3, 
+                    tension: 0.4, 
                     pointRadius: 0,
-                    borderWidth: 1.5
+                    borderWidth: 2,
+                    borderDash: [5, 5]
                 }
             ]
         },
@@ -259,33 +334,24 @@
             interaction: { mode: 'index', intersect: false },
             scales: {
                 y: { 
-                    grid: { color: 'rgba(255,255,255,0.05)' }, 
-                    ticks: { 
-                        color: '#ff5252', 
-                        font: { size: 10, weight: 'bold' },
-                        callback: function(value) { return value.toFixed(1) + '°'; }
-                    },
-                    grace: '5%' 
+                    grid: { color: 'rgba(255,255,255,0.03)' }, 
+                    ticks: { color: '#ff5252', font: { size: 10 }, callback: v => v.toFixed(1) + '°' }
                 },
                 y1: { 
                     position: 'right', 
                     grid: { display: false }, 
-                    ticks: { 
-                        color: '#448aff', 
-                        font: { size: 10, weight: 'bold' },
-                        callback: function(value) { return value.toFixed(0) + '%'; }
-                    }
+                    ticks: { color: '#448aff', font: { size: 10 }, callback: v => v.toFixed(0) + '%' }
                 },
                 x: { 
-                    grid: { color: 'rgba(255,255,255,0.05)' },
-                    ticks: { color: '#bdc3c7', font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } 
+                    grid: { display: false },
+                    ticks: { color: '#64748b', font: { size: 9 }, autoSkip: true, maxTicksLimit: 10 } 
                 }
             },
             plugins: { 
-                legend: { position: 'top', labels: { color: '#ecf0f1', boxWidth: 10, font: { size: 11 } } },
+                legend: { position: 'top', align: 'end', labels: { color: '#f8fafc', boxWidth: 12, font: { size: 11 } } },
                 annotation: { annotations: {
-                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(68,138,255,0.4)', borderWidth: 1, label: { display: true, position: 'start', backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', font: { size: 9 } }},
-                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(255,82,82,0.4)', borderWidth: 1, label: { display: true, position: 'end', backgroundColor: 'rgba(0,0,0,0.5)', color: '#fff', font: { size: 9 } }}
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(68,138,255,0.2)', borderWidth: 1, label: { display: true, position: 'start', backgroundColor: 'rgba(15,23,42,0.8)', color: '#fff', font: { size: 9 } }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(255,82,82,0.2)', borderWidth: 1, label: { display: true, position: 'end', backgroundColor: 'rgba(15,23,42,0.8)', color: '#fff', font: { size: 9 } }}
                 }}
             }
         }
@@ -306,21 +372,26 @@
         const el = document.getElementById(elementId);
         if (!el) return;
         if (previous === undefined || previous === null || Math.abs(current - previous) < 0.01) {
-            el.textContent = "→"; el.style.color = "#7f8c8d";
+            el.textContent = "•"; el.style.color = "#475569";
         } else if (current > previous) {
-            el.textContent = "↑"; el.style.color = "#ff5252";
+            el.textContent = "▲"; el.style.color = "#ef4444";
         } else {
-            el.textContent = "↓"; el.style.color = "#66bb6a";
+            el.textContent = "▼"; el.style.color = "#10b981";
         }
     }
 
     function updateStatusIndicator() {
         const dot = document.getElementById('statusDot');
+        const txt = document.getElementById('statusText');
         const now = Date.now();
         if (lastDataTimestamp > 0 && (now - lastDataTimestamp) < 70000) {
             dot.classList.add('online');
+            txt.textContent = "LIVE DATA";
+            txt.style.color = "#10b981";
         } else {
             dot.classList.remove('online');
+            txt.textContent = "STATION OFFLINE";
+            txt.style.color = "#ef4444";
         }
     }
 
@@ -362,7 +433,7 @@
                     const h = parseFloat(entry.h ?? 0);
                     const v = parseFloat(entry.v ?? 0);
                     const ts = entry.ts || k;
-                    labels.push(ts);
+                    labels.push(ts.split(' ')[1] || ts); // Nur Uhrzeit anzeigen
                     temps.push(t);
                     hums.push(h);
                     volts.push(v);
@@ -375,18 +446,17 @@
                 const idx = temps.length - 1;
                 const prevIdx = Math.max(0, temps.length - 2);
                 
-                document.getElementById('currTemp').textContent = temps[idx].toFixed(1) + "°";
-                document.getElementById('currHum').textContent = hums[idx].toFixed(0) + "%";
-                document.getElementById('currDew').textContent = dews[idx].toFixed(1) + "°";
-                document.getElementById('currAbs').textContent = absHums[idx].toFixed(1) + "g";
+                document.getElementById('currTemp').textContent = temps[idx].toFixed(1);
+                document.getElementById('currHum').textContent = hums[idx].toFixed(0);
+                document.getElementById('currDew').textContent = dews[idx].toFixed(1);
+                document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
                 
                 const voltEl = document.getElementById('currVolt');
-                voltEl.textContent = volts[idx].toFixed(2) + "V";
-                voltEl.style.color = volts[idx] > 4.0 ? "#4caf50" : (volts[idx] < 3.8 ? "#f44336" : "#ff9800");
+                voltEl.textContent = volts[idx].toFixed(2) + " V";
+                voltEl.style.color = volts[idx] > 4.0 ? "#10b981" : (volts[idx] < 3.8 ? "#ef4444" : "#ffd740");
 
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
                 updateTrend('humTrend', hums[idx], hums[prevIdx]);
-                updateTrend('voltTrend', volts[idx], volts[prevIdx]);
                 updateTrend('dewTrend', dews[idx], dews[prevIdx]);
                 updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
 
@@ -396,21 +466,21 @@
                 
                 const minH = Math.min(...hums);
                 const maxH = Math.max(...hums);
-                const paddingH = 2; 
-                chart.options.scales.y1.min = Math.max(0, Math.floor(minH - paddingH));
-                chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + paddingH));
+                chart.options.scales.y1.min = Math.max(0, Math.floor(minH - 2));
+                chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + 2));
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
-                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1);
+                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min ' + minT.toFixed(1);
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
-                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1);
+                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max ' + maxT.toFixed(1);
                 
                 chart.update('none');
 
                 const delta = temps[idx] - dews[idx];
-                document.getElementById('dewCard').style.border = delta < 3 ? "2px solid #ff5252" : "1px solid rgba(255,255,255,0.1)";
+                document.getElementById('dewCard').style.boxShadow = delta < 3 ? "inset 0 0 20px rgba(239,68,68,0.2)" : "none";
+                document.getElementById('dewCard').style.borderColor = delta < 3 ? "rgba(239,68,68,0.5)" : "var(--glass-border)";
                 
                 lastDataTimestamp = Date.now();
                 updateStatusIndicator();
