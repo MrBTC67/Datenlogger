@@ -9,12 +9,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #0f172a;       /* Dark Blue/Gray */
-            --card-bg: #1e293b;       /* Lighter Blue/Gray for Cards */
+            --bg-main: #0f172a;       
+            --card-bg: #1e293b;       
             --chart-bg: #1e293b;
-            --card-border: #334155;   /* Subtle border */
-            --text-primary: #f8fafc;  /* Near White */
-            --text-secondary: #94a3b8;/* Light Gray */
+            --card-border: #334155;   
+            --text-primary: #f8fafc;  
+            --text-secondary: #94a3b8;
             --accent-volt-bg: #0f172a;
             --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
             --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
@@ -162,7 +162,6 @@
             width: 100%;
             cursor: pointer;
             appearance: none;
-            /* SVG in heller Farbe für Dark Mode (%2394a3b8 = #94a3b8) */
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 12px center;
@@ -312,11 +311,14 @@
     let lastDataTimestamp = 0;
 
     function getTempColor(t) {
-        if (t <= 0) return '#a78bfa';
-        if (t <= 10) return '#60a5fa';
-        if (t <= 20) return '#2dd4bf';
-        if (t <= 28) return '#fbbf24';
-        return '#f87171';
+        if (t >= 40) return '#ef4444';
+        if (t >= 30) return '#f97316';
+        if (t >= 20) return '#eab308';
+        if (t >= 10) return '#10b981';
+        if (t >= 0)  return '#06b6d4';
+        if (t >= -10) return '#3b82f6';
+        if (t >= -20) return '#8b5cf6';
+        return '#6d28d9';
     }
 
     function getHumColor(h) {
@@ -344,9 +346,11 @@
                     tension: 0.35, 
                     pointRadius: 0,
                     borderWidth: 3,
-                    borderColor: '#ef4444',
                     fill: true,
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)'
+                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    segment: {
+                        borderColor: ctx => getTempColor(ctx.p0.parsed.y)
+                    }
                 },
                 { 
                     label: 'Feuchtigkeit', 
