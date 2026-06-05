@@ -9,15 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #f8fafc;
-            --card-bg: #ffffff;
-            --chart-bg: #f0f9ff;
-            --card-border: #e2e8f0;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-            --accent-volt-bg: #f0f9ff; /* Jetzt Hellblau */
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+            --bg-main: #0f172a;       /* Dark Blue/Gray */
+            --card-bg: #1e293b;       /* Lighter Blue/Gray for Cards */
+            --chart-bg: #1e293b;
+            --card-border: #334155;   /* Subtle border */
+            --text-primary: #f8fafc;  /* Near White */
+            --text-secondary: #94a3b8;/* Light Gray */
+            --accent-volt-bg: #0f172a;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -64,7 +64,7 @@
             gap: 8px;
             font-size: 0.7rem;
             font-weight: 800;
-            background: white;
+            background: var(--card-bg);
             padding: 6px 12px;
             border-radius: 50px;
             border: 1px solid var(--card-border);
@@ -130,7 +130,7 @@
             display: flex; 
             flex-direction: column;
             gap: 16px; 
-            background: white;
+            background: var(--card-bg);
             padding: 20px;
             border-radius: 24px;
             border: 1px solid var(--card-border);
@@ -152,7 +152,7 @@
         }
         
         select { 
-            background: #f8fafc; 
+            background: var(--bg-main); 
             color: var(--text-primary); 
             border: 1px solid var(--card-border); 
             padding: 14px 16px; 
@@ -162,7 +162,8 @@
             width: 100%;
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            /* SVG in heller Farbe für Dark Mode (%2394a3b8 = #94a3b8) */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 12px center;
             background-size: 18px;
@@ -170,13 +171,13 @@
 
         .volt-display {
             background: var(--accent-volt-bg);
-            border: 1px solid #bae6fd;
+            border: 1px solid var(--card-border);
             padding: 16px;
             border-radius: 14px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .battery-container {
@@ -185,7 +186,6 @@
             gap: 10px;
         }
 
-        /* Akku Icon Styling */
         .battery-icon {
             width: 35px;
             height: 18px;
@@ -224,7 +224,7 @@
 
 <div class="container">
     <header>
-        <h1>Daten Logger <span style="color: #2563eb;">V1.0</span></h1>
+        <h1>Daten Logger <span style="color: #3b82f6;">V1.0</span></h1>
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <span id="statusText">...</span>
@@ -312,25 +312,24 @@
     let lastDataTimestamp = 0;
 
     function getTempColor(t) {
-        if (t <= 0) return '#8b5cf6';
-        if (t <= 10) return '#3b82f6';
-        if (t <= 20) return '#0d9488';
-        if (t <= 28) return '#f59e0b';
-        return '#ef4444';
+        if (t <= 0) return '#a78bfa';
+        if (t <= 10) return '#60a5fa';
+        if (t <= 20) return '#2dd4bf';
+        if (t <= 28) return '#fbbf24';
+        return '#f87171';
     }
 
     function getHumColor(h) {
-        if (h < 40) return '#b45309';
-        if (h < 75) return '#16a34a';
-        if (h < 90) return '#2563eb';
-        return '#1e3a8a';
+        if (h < 40) return '#d97706';
+        if (h < 75) return '#22c55e';
+        if (h < 90) return '#3b82f6';
+        return '#60a5fa';
     }
 
-    // Farbe für Spannung (1S LiPo/Li-Ion Logik)
     function getVoltColor(v) {
-        if (v > 4.0) return '#16a34a'; // Grün
-        if (v > 3.7) return '#ea580c'; // Orange
-        return '#dc2626'; // Rot
+        if (v > 4.0) return '#22c55e';
+        if (v > 3.7) return '#f97316';
+        return '#ef4444'; 
     }
 
     const chart = new Chart(ctx, {
@@ -345,13 +344,13 @@
                     tension: 0.35, 
                     pointRadius: 0,
                     borderWidth: 3,
-                    borderColor: '#dc2626',
+                    borderColor: '#ef4444',
                     fill: true,
-                    backgroundColor: 'rgba(220, 38, 38, 0.05)'
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)'
                 },
                 { 
                     label: 'Feuchtigkeit', 
-                    borderColor: 'rgba(37, 99, 235, 0.35)',
+                    borderColor: 'rgba(59, 130, 246, 0.5)',
                     data: [], 
                     yAxisID: 'y1', 
                     tension: 0.35, 
@@ -366,24 +365,24 @@
             interaction: { mode: 'index', intersect: false },
             scales: {
                 y: { 
-                    grid: { color: 'rgba(255, 255, 255, 0.5)' }, 
-                    ticks: { color: '#dc2626', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '°' }
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                    ticks: { color: '#ef4444', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '°' }
                 },
                 y1: { 
                     position: 'right', 
                     grid: { display: false }, 
-                    ticks: { color: '#2563eb', font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
+                    ticks: { color: '#3b82f6', font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
                 },
                 x: { 
                     grid: { display: false },
-                    ticks: { color: '#64748b', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8 } 
+                    ticks: { color: '#94a3b8', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8 } 
                 }
             },
             plugins: { 
-                legend: { position: 'top', align: 'center', labels: { color: '#1e293b', boxWidth: 8, font: { weight: '600', size: 11 } } },
+                legend: { position: 'top', align: 'center', labels: { color: '#f8fafc', boxWidth: 8, font: { weight: '600', size: 11 } } },
                 annotation: { annotations: {
-                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(37, 99, 235, 0.2)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#f0f9ff', color: '#1e293b', font: { size: 9, weight: '700' } }},
-                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(220, 38, 38, 0.2)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#f0f9ff', color: '#1e293b', font: { size: 9, weight: '700' } }}
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(59, 130, 246, 0.3)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#1e293b', color: '#f8fafc', font: { size: 9, weight: '700' } }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(239, 68, 68, 0.3)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#1e293b', color: '#f8fafc', font: { size: 9, weight: '700' } }}
                 }}
             }
         }
@@ -419,11 +418,11 @@
         if (lastDataTimestamp > 0 && (now - lastDataTimestamp) < 70000) {
             dot.classList.add('online');
             txt.textContent = "LIVE";
-            txt.style.color = "#16a34a";
+            txt.style.color = "#22c55e";
         } else {
             dot.classList.remove('online');
             txt.textContent = "OFFLINE";
-            txt.style.color = "#dc2626";
+            txt.style.color = "#ef4444";
         }
     }
 
@@ -481,7 +480,6 @@
                 const curDP = dews[idx];
                 const curV = volts[idx];
 
-                // Werte & Farben setzen
                 document.getElementById('currTemp').textContent = curT.toFixed(1);
                 document.getElementById('currTemp').style.color = getTempColor(curT);
 
@@ -493,7 +491,6 @@
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
                 
-                // Akku Update
                 const voltEl = document.getElementById('currVolt');
                 const batEl = document.getElementById('batLevel');
                 const vColor = getVoltColor(curV);
@@ -501,7 +498,6 @@
                 voltEl.textContent = curV.toFixed(2) + " V";
                 voltEl.style.color = vColor;
                 
-                // Akku-Prozent Logik (Annahme 1S: 3.4V leer, 4.2V voll)
                 let batPct = Math.max(0, Math.min(100, (curV - 3.4) / (4.2 - 3.4) * 100));
                 batEl.style.width = batPct + "%";
                 batEl.style.backgroundColor = vColor;
@@ -529,12 +525,11 @@
                 
                 chart.update('none');
 
-                // Taupunkt Warnung
                 const delta = curT - curDP;
                 const dpCard = document.getElementById('dewPointCard');
                 if (delta < 3) {
                     dpCard.style.borderColor = "#ef4444";
-                    dpCard.style.background = "#fff1f2";
+                    dpCard.style.background = "#450a0a"; 
                 } else {
                     dpCard.style.borderColor = "var(--card-border)";
                     dpCard.style.background = "var(--card-bg)";
