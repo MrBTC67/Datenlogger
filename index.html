@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -56,6 +56,29 @@
             font-weight: 700; 
             text-transform: uppercase;
             letter-spacing: -0.2px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .header-voltage {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .header-voltage .battery-container {
+            gap: 6px;
+        }
+
+        .header-voltage #currVolt {
+            font-size: 0.9rem;
         }
 
         .status-indicator {
@@ -236,7 +259,18 @@
 
 <div class="container">
     <header>
-        <h1>Daten Logger <span style="color: #3b82f6;">V1.0</span></h1>
+        <div class="header-left">
+            <h1>Daten Logger <span style="color: #3b82f6;">V1.0</span></h1>
+            <div class="header-voltage" aria-label="Akkuspannung">
+                <span>Akku:</span>
+                <div class="battery-container">
+                    <div class="battery-icon">
+                        <div id="batLevel" class="battery-level"></div>
+                    </div>
+                    <div id="currVolt">-- V</div>
+                </div>
+            </div>
+        </div>
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <span id="statusText">...</span>
@@ -287,15 +321,7 @@
     <div class="controls">
         <div class="control-group">
             <label>Systemstatus</label>
-            <div class="volt-display">
-                <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);">Akku Spannung: </span>
-                <div class="battery-container">
-                    <div class="battery-icon">
-                        <div id="batLevel" class="battery-level"></div>
-                    </div>
-                    <div id="currVolt">-- V</div>
-                </div>
-            </div>
+            <div class="system-status">Live-Datenlogger</div>
         </div>
 
         <div class="control-group">
@@ -325,6 +351,28 @@
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     let lastDataTimestamp = 0;
+    const dewRiskZones = {
+        id: 'dewRiskZones',
+        beforeDatasetsDraw(chart) {
+            const values = chart.dewValues;
+            if (!values || !chart.chartArea || !chart.scales.x) return;
+            const points = chart.data.datasets[0].data;
+            const { ctx, chartArea, scales } = chart;
+            ctx.save();
+            for (let i = 0; i < values.length; i++) {
+                const gap = Number(points[i]) - Number(values[i]);
+                if (!Number.isFinite(gap) || gap > 4) continue;
+                const x = scales.x.getPixelForValue(i);
+                const previousX = i > 0 ? scales.x.getPixelForValue(i - 1) : x - 8;
+                const nextX = i < values.length - 1 ? scales.x.getPixelForValue(i + 1) : x + 8;
+                const width = Math.max(2, Math.min(x - previousX, nextX - x));
+                ctx.fillStyle = gap <= 2 ? 'rgba(239, 68, 68, 0.18)' : 'rgba(249, 115, 22, 0.14)';
+                ctx.fillRect(x - width, chartArea.top, width * 2, chartArea.bottom - chartArea.top);
+            }
+            ctx.restore();
+        }
+    };
+    Chart.register(dewRiskZones);
 
     function getTempColor(t) {
         if (t >= 40) return '#ef4444';
@@ -577,6 +625,7 @@
                 chart.data.labels = labels;
                 chart.data.datasets[0].data = temps;
                 chart.data.datasets[1].data = hums;
+                chart.dewValues = dews;
                 
                 const minH = Math.min(...hums);
                 const maxH = Math.max(...hums);
