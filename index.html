@@ -117,6 +117,17 @@
 
         .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
 
+        .danger-button {
+            background: #7f1d1d;
+            color: #fecaca;
+            border: 1px solid #ef4444;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .danger-button:hover { background: #991b1b; }
         .chart-wrapper { 
             grid-column: span 4;
             background: var(--chart-bg); 
@@ -303,6 +314,8 @@
                 <option value="10000">Ganze Session</option>
             </select>
         </div>
+
+            <button id="deleteSessionBtn" class="danger-button" type="button" onclick="deleteSelectedSession()">Ausgewählte Session löschen</button>
     </div>
 </div>
 
@@ -476,6 +489,25 @@
         } catch (e) { console.error(e); }
     }
 
+    async function deleteSelectedSession() {
+        const sel = document.getElementById('sessionSelect');
+        const session = sel.value;
+        if (!session) return;
+        const confirmed = confirm(
+            'Session ' + session + ' wirklich löschen?\n\nAlle Messwerte dieser Session werden dauerhaft aus Firebase gelöscht.'
+        );
+        if (!confirmed) return;
+        try {
+            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Firebase HTTP ' + response.status);
+            await loadSessions();
+            await updateData();
+            alert('Session wurde gelöscht.');
+        } catch (e) {
+            console.error(e);
+            alert('Die Session konnte nicht gelöscht werden. Prüfe die Firebase-Regeln.');
+        }
+    }
     async function updateData() {
         const limit = document.getElementById('limitSelect').value;
         const session = document.getElementById('sessionSelect').value;
@@ -553,8 +585,8 @@
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
-                chart.options.scales.y.min = minT - 5;
-                chart.options.scales.y.max = maxT + 5;
+                chart.options.scales.y.min = minT - 1;
+                chart.options.scales.y.max = maxT + 1;
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
                 chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
