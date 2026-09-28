@@ -115,6 +115,8 @@
         .unit { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
         .trend { font-size: 1rem; margin-left: auto; }
 
+        .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
+
         .chart-wrapper { 
             grid-column: span 4;
             background: var(--chart-bg); 
@@ -254,6 +256,7 @@
             <div id="currDew" class="val">--</div>
             <div class="unit">&deg;C</div>
             <div id="dewTrend" class="trend"></div>
+            <div id="dewWarning" class="dew-warning">Taugefahr - Optik könnte beschlagen</div>
         </div>
     </div>
 
@@ -557,18 +560,26 @@
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
                 chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
                 
-                chart.update('none');
-
-                const delta = curT - curDP;
+                chart.update('none');                const delta = curT - curDP;
                 const dpCard = document.getElementById('dewPointCard');
-                if (delta < 3) {
+                const dewWarning = document.getElementById('dewWarning');
+                if (delta <= 2) {
                     dpCard.style.borderColor = "#ef4444";
-                    dpCard.style.background = "#450a0a"; 
+                    dpCard.style.background = "#450a0a";
+                    dewWarning.textContent = "Taugefahr - Optik könnte beschlagen";
+                    dewWarning.style.display = "block";
+                    dewWarning.style.color = "#fca5a5";
+                } else if (delta <= 4) {
+                    dpCard.style.borderColor = "#f97316";
+                    dpCard.style.background = "#431407";
+                    dewWarning.textContent = "Warnung: Abstand zum Taupunkt nur " + delta.toFixed(1) + " °C";
+                    dewWarning.style.display = "block";
+                    dewWarning.style.color = "#fdba74";
                 } else {
                     dpCard.style.borderColor = "var(--card-border)";
                     dpCard.style.background = "var(--card-bg)";
+                    dewWarning.style.display = "none";
                 }
-                
                 lastDataTimestamp = Date.now();
                 updateStatusIndicator();
             }
