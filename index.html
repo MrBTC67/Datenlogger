@@ -234,7 +234,7 @@
         <h3>Temperatur</h3>
         <div class="val-row">
             <div id="currTemp" class="val">--</div>
-            <div class="unit">°C</div>
+            <div class="unit">&deg;C</div>
             <div id="tempTrend" class="trend"></div>
         </div>
     </div>
@@ -252,7 +252,7 @@
         <h3>Taupunkt</h3>
         <div class="val-row">
             <div id="currDew" class="val">--</div>
-            <div class="unit">°C</div>
+            <div class="unit">&deg;C</div>
             <div id="dewTrend" class="trend"></div>
         </div>
     </div>
@@ -261,7 +261,7 @@
         <h3>Abs. Feuchte</h3>
         <div class="val-row">
             <div id="currAbs" class="val">--</div>
-            <div class="unit">g/m³</div>
+            <div class="unit">g/m&sup3;</div>
             <div id="absTrend" class="trend"></div>
         </div>
     </div>
@@ -345,9 +345,9 @@
                     yAxisID: 'y', 
                     tension: 0.35, 
                     pointRadius: 0,
-                    borderWidth: 3,
-                    fill: true,
-                    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                    borderWidth: 4,
+                    backgroundColor: 'transparent',
+                    fill: false,
                     segment: {
                         borderColor: ctx => getTempColor(ctx.p0.parsed.y)
                     }
@@ -359,7 +359,9 @@
                     yAxisID: 'y1', 
                     tension: 0.35, 
                     pointRadius: 0,
-                    borderWidth: 1.5
+                    borderWidth: 2,
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    fill: false
                 }
             ]
         },
@@ -370,7 +372,7 @@
             scales: {
                 y: { 
                     grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
-                    ticks: { color: '#ef4444', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '°' }
+                    ticks: { color: '#d1d5db', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '' + String.fromCharCode(176) + 'C' }
                 },
                 y1: { 
                     position: 'right', 
@@ -383,8 +385,12 @@
                 }
             },
             plugins: { 
-                legend: { position: 'top', align: 'center', labels: { color: '#f8fafc', boxWidth: 8, font: { weight: '600', size: 11 } } },
+                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#3b82f6' : '#d1d5db'; return item; }) } },
                 annotation: { annotations: {
+                    coolZone: { type: 'box', yMin: -40, yMax: 10, backgroundColor: 'rgba(59, 130, 246, 0.035)', borderWidth: 0 },
+                    mildZone: { type: 'box', yMin: 10, yMax: 20, backgroundColor: 'rgba(16, 185, 129, 0.035)', borderWidth: 0 },
+                    warmZone: { type: 'box', yMin: 20, yMax: 30, backgroundColor: 'rgba(234, 179, 8, 0.035)', borderWidth: 0 },
+                    hotZone: { type: 'box', yMin: 30, yMax: 60, backgroundColor: 'rgba(239, 68, 68, 0.035)', borderWidth: 0 },
                     minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(59, 130, 246, 0.3)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#1e293b', color: '#f8fafc', font: { size: 9, weight: '700' } }},
                     maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(239, 68, 68, 0.3)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#1e293b', color: '#f8fafc', font: { size: 9, weight: '700' } }}
                 }}
@@ -407,14 +413,32 @@
         const el = document.getElementById(elementId);
         if (!el) return;
         if (previous === undefined || previous === null || Math.abs(current - previous) < 0.01) {
-            el.textContent = "—"; el.style.color = "#94a3b8";
+            el.textContent = "\u2194"; el.style.color = "#94a3b8";
         } else if (current > previous) {
-            el.textContent = "▲"; el.style.color = "#ef4444";
+            el.textContent = "\u25B2"; el.style.color = "#ef4444";
         } else {
-            el.textContent = "▼"; el.style.color = "#10b981";
+            el.textContent = "\u25BC"; el.style.color = "#10b981";
         }
     }
 
+    function updateHumidityTrend(elementId, current, previous) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const delta = current - previous;
+        if (previous === undefined || previous === null || Math.abs(delta) < 0.5) {
+            el.textContent = "\u2192";
+            el.style.color = "#94a3b8";
+            el.title = "Feuchtigkeit stabil";
+        } else if (delta > 0) {
+            el.textContent = "\u2191";
+            el.style.color = "#3b82f6";
+            el.title = "Feuchtigkeit steigt";
+        } else {
+            el.textContent = "\u2193";
+            el.style.color = "#f59e0b";
+            el.title = "Feuchtigkeit fällt";
+        }
+    }
     function updateStatusIndicator() {
         const dot = document.getElementById('statusDot');
         const txt = document.getElementById('statusText');
@@ -460,6 +484,8 @@
 
             const keys = Object.keys(data).sort();
             const labels = [], temps = [], hums = [], volts = [], dews = [], absHums = [];
+            const showDate = parseInt(limit, 10) >= 1500;
+            const sessionDate = session.length >= 8 ? session.slice(6, 8) + '.' + session.slice(4, 6) + '.' + session.slice(0, 4) : '';
             
             keys.forEach(k => {
                 const entry = data[k];
@@ -468,7 +494,8 @@
                     const h = parseFloat(entry.h ?? 0);
                     const v = parseFloat(entry.v ?? 0);
                     const ts = entry.ts || k;
-                    labels.push(ts.split(' ')[1] || ts);
+                    const timeLabel = ts.split(' ')[1] || ts;
+                    labels.push(showDate && sessionDate ? sessionDate + ' ' + timeLabel : timeLabel);
                     temps.push(t); hums.push(h); volts.push(v);
                     dews.push(calcDewPoint(t, h));
                     absHums.push(calcAbsHum(t, h));
@@ -494,6 +521,7 @@
                 document.getElementById('currDew').style.color = getTempColor(curDP);
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
+                document.getElementById('currAbs').style.color = '#64748b';
                 
                 const voltEl = document.getElementById('currVolt');
                 const batEl = document.getElementById('batLevel');
@@ -507,7 +535,7 @@
                 batEl.style.backgroundColor = vColor;
 
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
-                updateTrend('humTrend', hums[idx], hums[prevIdx]);
+                updateHumidityTrend('humTrend', hums[idx], hums[prevIdx]);
                 updateTrend('dewTrend', dews[idx], dews[prevIdx]);
                 updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
 
@@ -522,10 +550,12 @@
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
+                chart.options.scales.y.min = minT - 5;
+                chart.options.scales.y.max = maxT + 5;
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
-                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '°';
+                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
-                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '°';
+                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
                 
                 chart.update('none');
 
