@@ -361,12 +361,17 @@
             ctx.save();
             for (let i = 0; i < values.length; i++) {
                 const gap = Number(points[i]) - Number(values[i]);
-                if (!Number.isFinite(gap) || gap > 4) continue;
+                // Orange Taupunkt-Risikozone nur zwischen 1 und 2 °C Differenz.
+                if (!Number.isFinite(gap) || gap < 1 || gap > 2) continue;
                 const x = scales.x.getPixelForValue(i);
                 const previousX = i > 0 ? scales.x.getPixelForValue(i - 1) : x - 8;
                 const nextX = i < values.length - 1 ? scales.x.getPixelForValue(i + 1) : x + 8;
                 const width = Math.max(2, Math.min(x - previousX, nextX - x));
-                ctx.fillStyle = gap <= 2 ? 'rgba(239, 68, 68, 0.18)' : 'rgba(249, 115, 22, 0.14)';
+                // Je näher die Differenz an 1 °C liegt, desto kräftiger orange.
+                // Die maximale Fläche bleibt dabei ungefähr 30 % transparent.
+                const orangeStrength = 1 - ((gap - 1) / (2 - 1));
+                const orangeAlpha = 0.08 + (orangeStrength * 0.22);
+                ctx.fillStyle = `rgba(249, 115, 22, ${orangeAlpha.toFixed(3)})`;
                 ctx.fillRect(x - width, chartArea.top, width * 2, chartArea.bottom - chartArea.top);
             }
             ctx.restore();
@@ -410,6 +415,7 @@
                     tension: 0.35, 
                     pointRadius: 0,
                     borderWidth: 4,
+                    borderColor: '#facc15',
                     backgroundColor: 'transparent',
                     fill: false,
                     segment: {
@@ -449,7 +455,7 @@
                 }
             },
             plugins: { 
-                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#3b82f6' : '#d1d5db'; return item; }) } },
+                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#3b82f6' : '#facc15'; return item; }) } },
                 annotation: { annotations: {
                     coolZone: { type: 'box', yMin: -40, yMax: 10, backgroundColor: 'rgba(59, 130, 246, 0.035)', borderWidth: 0 },
                     mildZone: { type: 'box', yMin: 10, yMax: 20, backgroundColor: 'rgba(16, 185, 129, 0.035)', borderWidth: 0 },
