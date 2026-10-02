@@ -93,6 +93,9 @@
             border: 1px solid var(--card-border);
         }
 
+        .status-copy { display: flex; flex-direction: column; gap: 2px; }
+        .status-age { color: var(--text-secondary); font-size: 0.65rem; font-weight: 500; }
+
         .dot {
             width: 8px;
             height: 8px;
@@ -134,12 +137,22 @@
             gap: 4px;
         }
 
-        .val { font-size: 1.8rem; font-weight: 700; color: var(--text-primary); transition: color 0.3s ease; }
-        .unit { font-size: 0.8rem; color: var(--text-secondary); font-weight: 500; }
-        .trend { font-size: 1rem; margin-left: auto; }
+        .val { font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 700; color: var(--text-primary); transition: color 0.3s ease; }
+        .unit { font-size: 0.95rem; color: var(--text-secondary); font-weight: 500; }
+        .trend { font-size: 1.15rem; margin-left: auto; }
 
         .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
 
+        .delete-group {
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            background: rgba(127, 29, 29, 0.16);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .delete-group p { margin: 0; color: #fecaca; font-size: 0.78rem; line-height: 1.45; }
         .danger-button {
             background: #7f1d1d;
             color: #fecaca;
@@ -151,13 +164,14 @@
             cursor: pointer;
         }
         .danger-button:hover { background: #991b1b; }
+        .danger-button:focus-visible, select:focus-visible { outline: 3px solid #fca5a5; outline-offset: 2px; }
         .chart-wrapper { 
             grid-column: span 4;
             background: var(--chart-bg); 
             padding: 15px; 
             border-radius: 24px; 
             border: 1px solid var(--card-border);
-            height: 350px;
+            height: 390px;
             box-shadow: var(--shadow);
         }
 
@@ -248,10 +262,32 @@
         }
 
         #currVolt { font-weight: 800; font-size: 1.2rem; transition: color 0.3s ease; }
+        .battery-percent { min-width: 3.2em; color: var(--text-primary); font-size: 0.8rem; font-weight: 700; }
+
+        @media (min-width: 801px) {
+            .controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+            .delete-group { grid-column: 1 / -1; }
+        }
 
         @media (max-width: 800px) {
             .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
             header, .chart-wrapper, .controls { grid-column: span 2; }
+            header { flex-wrap: wrap; gap: 12px; }
+            .header-left { flex-wrap: wrap; gap: 10px 16px; }
+            .chart-wrapper { height: 340px; padding: 12px; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .container { gap: 8px; }
+            header h1 { font-size: 0.95rem; }
+            .header-voltage { font-size: 0.72rem; }
+            .card { padding: 13px 11px; border-radius: 15px; }
+            .val { font-size: 1.65rem; }
+            .card h3 { font-size: 0.68rem; }
+            .dew-warning { font-size: 0.66rem; }
+            .chart-wrapper { height: 300px; }
+            .controls { padding: 14px; gap: 13px; }
         }
     </style>
 </head>
@@ -265,15 +301,16 @@
                 <span>Akku:</span>
                 <div class="battery-container">
                     <div class="battery-icon">
-                        <div id="batLevel" class="battery-level"></div>
+                    <div id="batLevel" class="battery-level"></div>
                     </div>
                     <div id="currVolt">-- V</div>
+                    <div id="batteryPercent" class="battery-percent">--%</div>
                 </div>
             </div>
         </div>
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
-            <span id="statusText">...</span>
+            <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
         </div>
     </header>
 
@@ -320,28 +357,31 @@
 
     <div class="controls">
         <div class="control-group">
-            <label>Systemstatus</label>
+            <label>Datenansicht</label>
             <div class="system-status">Live-Datenlogger</div>
         </div>
 
         <div class="control-group">
-            <label>Aktive Session</label>
+            <label for="sessionSelect">Aktive Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
         </div>
         
         <div class="control-group">
-            <label>Zeitraum Ansicht</label>
+            <label for="limitSelect">Zeitraum im Diagramm</label>
             <select id="limitSelect" onchange="updateData()">
-                <option value="60">Letzte 60 Minuten</option>
-                <option value="180" selected>Letzte 3 Stunden</option>
-                <option value="360">Letzte 6 Stunden</option>
-                <option value="720">Letzte 12 Stunden</option>
-                <option value="1500">Letzte 24 Stunden</option>
+                <option value="20">Letzte 60 Minuten</option>
+                <option value="60" selected>Letzte 3 Stunden</option>
+                <option value="180">Letzte 9 Stunden</option>
+                <option value="360">Letzte 18 Stunden</option>
+                <option value="480">Letzte 24 Stunden</option>
                 <option value="10000">Ganze Session</option>
             </select>
         </div>
 
-            <button id="deleteSessionBtn" class="danger-button" type="button" onclick="deleteSelectedSession()">Ausgewählte Session löschen</button>
+        <div class="delete-group">
+            <p>Diese Aktion entfernt die ausgewählte Session dauerhaft aus Firebase.</p>
+            <button id="deleteSessionBtn" class="danger-button" type="button" onclick="deleteSelectedSession()">Session dauerhaft löschen</button>
+        </div>
     </div>
 </div>
 
@@ -350,7 +390,8 @@
 
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
-    let lastDataTimestamp = 0;
+    let newestMeasurementTimestamp = 0;
+    const LIVE_THRESHOLD_MS = 4 * 60 * 1000;
     const dewRiskZones = {
         id: 'dewRiskZones',
         beforeDatasetsDraw(chart) {
@@ -414,22 +455,19 @@
                     yAxisID: 'y', 
                     tension: 0.35, 
                     pointRadius: 0,
-                    borderWidth: 4,
+                    borderWidth: 3.5,
                     borderColor: '#facc15',
                     backgroundColor: 'transparent',
-                    fill: false,
-                    segment: {
-                        borderColor: ctx => getTempColor(ctx.p0.parsed.y)
-                    }
+                    fill: false
                 },
                 { 
                     label: 'Feuchtigkeit', 
-                    borderColor: 'rgba(59, 130, 246, 0.5)',
+                    borderColor: '#60a5fa',
                     data: [], 
                     yAxisID: 'y1', 
                     tension: 0.35, 
                     pointRadius: 0,
-                    borderWidth: 2,
+                    borderWidth: 2.5,
                     backgroundColor: 'rgba(59, 130, 246, 0.08)',
                     fill: false
                 }
@@ -479,6 +517,18 @@
         return (6.112 * Math.exp((17.67 * t) / (t + 243.5)) * h * 2.1674) / (273.15 + t);
     }
 
+    function getFirebasePushTime(key) {
+        const alphabet = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+        if (typeof key !== 'string' || key.length < 8) return null;
+        let milliseconds = 0;
+        for (const char of key.slice(0, 8)) {
+            const digit = alphabet.indexOf(char);
+            if (digit < 0) return null;
+            milliseconds = milliseconds * 64 + digit;
+        }
+        return Number.isFinite(milliseconds) ? milliseconds : null;
+    }
+
     function updateTrend(elementId, current, previous) {
         const el = document.getElementById(elementId);
         if (!el) return;
@@ -512,8 +562,16 @@
     function updateStatusIndicator() {
         const dot = document.getElementById('statusDot');
         const txt = document.getElementById('statusText');
+        const ageText = document.getElementById('dataAge');
         const now = Date.now();
-        if (lastDataTimestamp > 0 && (now - lastDataTimestamp) < 70000) {
+        const ageMs = newestMeasurementTimestamp > 0 ? Math.max(0, now - newestMeasurementTimestamp) : null;
+        if (ageMs !== null) {
+            const ageSeconds = Math.floor(ageMs / 1000);
+            ageText.textContent = ageSeconds < 60 ? `Messung vor ${ageSeconds} s` : `Messung vor ${Math.floor(ageSeconds / 60)} min`;
+        } else {
+            ageText.textContent = 'Keine Messung';
+        }
+        if (ageMs !== null && ageMs < LIVE_THRESHOLD_MS) {
             dot.classList.add('online');
             txt.textContent = "LIVE";
             txt.style.color = "#22c55e";
@@ -565,16 +623,25 @@
     async function updateData() {
         const limit = document.getElementById('limitSelect').value;
         const session = document.getElementById('sessionSelect').value;
-        if (!session) return;
+        if (!session) {
+            newestMeasurementTimestamp = 0;
+            updateStatusIndicator();
+            return;
+        }
         try {
-            const response = await fetch(`${dbUrl}Datenlogger/${session}.json?orderBy="$key"&limitToLast=${limit}`);
+            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=${limit}`);
             const data = await response.json();
-            if (!data) return;
+            if (!data) {
+                newestMeasurementTimestamp = 0;
+                updateStatusIndicator();
+                return;
+            }
 
             const keys = Object.keys(data).sort();
             const labels = [], temps = [], hums = [], volts = [], dews = [], absHums = [];
-            const showDate = parseInt(limit, 10) >= 1500;
-            const sessionDate = session.length >= 8 ? session.slice(6, 8) + '.' + session.slice(4, 6) + '.' + session.slice(0, 4) : '';
+            const showDate = parseInt(limit, 10) >= 480;
+            const sessionMatch = session.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})$/);
+            const sessionDate = sessionMatch ? `${sessionMatch[3]}.${sessionMatch[2]}.${sessionMatch[1]}` : '';
             
             keys.forEach(k => {
                 const entry = data[k];
@@ -582,9 +649,16 @@
                     const t = parseFloat(entry.t ?? 0);
                     const h = parseFloat(entry.h ?? 0);
                     const v = parseFloat(entry.v ?? 0);
-                    const ts = entry.ts || k;
-                    const timeLabel = ts.split(' ')[1] || ts;
-                    labels.push(showDate && sessionDate ? sessionDate + ' ' + timeLabel : timeLabel);
+                    const ts = String(entry.ts || k);
+                    const timeLabel = ts.split(' ').pop();
+                    const pushTime = getFirebasePushTime(k);
+                    const rowDate = pushTime ? new Date(pushTime) : (sessionMatch ? new Date(Number(sessionMatch[1]), Number(sessionMatch[2]) - 1, Number(sessionMatch[3])) : null);
+                    const labelDate = rowDate ? `${String(rowDate.getDate()).padStart(2, '0')}.${String(rowDate.getMonth() + 1).padStart(2, '0')}.${rowDate.getFullYear()}` : sessionDate;
+                    if (pushTime) newestMeasurementTimestamp = pushTime;
+                    else if (rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)) {
+                        newestMeasurementTimestamp = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate(), Number(ts.slice(0, 2)), Number(ts.slice(3, 5)), Number(ts.slice(6, 8))).getTime();
+                    }
+                    labels.push(showDate && labelDate ? labelDate + ' ' + timeLabel : timeLabel);
                     temps.push(t); hums.push(h); volts.push(v);
                     dews.push(calcDewPoint(t, h));
                     absHums.push(calcAbsHum(t, h));
@@ -622,6 +696,8 @@
                 let batPct = Math.max(0, Math.min(100, (curV - 3.4) / (4.2 - 3.4) * 100));
                 batEl.style.width = batPct + "%";
                 batEl.style.backgroundColor = vColor;
+                document.getElementById('batteryPercent').textContent = "ca. " + Math.round(batPct) + "%";
+                document.getElementById('batteryPercent').title = "Grobe Spannungsanzeige zwischen 3,4 V und 4,2 V; keine genaue Ladezustandsmessung";
 
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
                 updateHumidityTrend('humTrend', hums[idx], hums[prevIdx]);
@@ -633,10 +709,8 @@
                 chart.data.datasets[1].data = hums;
                 chart.dewValues = dews;
                 
-                const minH = Math.min(...hums);
-                const maxH = Math.max(...hums);
-                chart.options.scales.y1.min = Math.max(0, Math.floor(minH - 2));
-                chart.options.scales.y1.max = Math.min(100, Math.ceil(maxH + 2));
+                chart.options.scales.y1.min = 0;
+                chart.options.scales.y1.max = 100;
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
@@ -647,7 +721,8 @@
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
                 chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
                 
-                chart.update('none');                const delta = curT - curDP;
+                chart.update('none');
+                const delta = curT - curDP;
                 const dpCard = document.getElementById('dewPointCard');
                 const dewWarning = document.getElementById('dewWarning');
                 if (delta <= 1.0) {
@@ -667,10 +742,16 @@
                     dpCard.style.background = "var(--card-bg)";
                     dewWarning.style.display = "none";
                 }
-                lastDataTimestamp = Date.now();
                 updateStatusIndicator();
             }
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            if (!newestMeasurementTimestamp) {
+                document.getElementById('statusText').textContent = "FEHLER";
+                document.getElementById('statusText').style.color = "#f97316";
+                document.getElementById('dataAge').textContent = "Datenabruf fehlgeschlagen";
+            }
+        }
     }
 
     async function init() {
