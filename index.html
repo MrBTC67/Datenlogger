@@ -142,6 +142,23 @@
         .trend { font-size: 1.15rem; margin-left: auto; }
 
         .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
+        .dew-gap-line { color: var(--text-secondary); font-size: 0.78rem; }
+        .dew-gap-line strong { color: var(--text-primary); font-size: 0.9rem; }
+
+        .insights-panel {
+            grid-column: span 4;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+        .insights-panel h2 { margin: 0 0 12px; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .insight-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+        .insight-item { min-width: 0; padding: 13px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--bg-main); }
+        .insight-label { color: var(--text-secondary); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .insight-value { margin-top: 7px; font-size: clamp(1.15rem, 2.4vw, 1.55rem); font-weight: 700; color: var(--text-primary); }
+        .insight-detail { margin-top: 5px; color: var(--text-secondary); font-size: 0.7rem; line-height: 1.4; }
 
         .delete-group {
             border: 1px solid rgba(239, 68, 68, 0.45);
@@ -271,7 +288,7 @@
 
         @media (max-width: 800px) {
             .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            header, .chart-wrapper, .controls { grid-column: span 2; }
+            header, .chart-wrapper, .controls, .insights-panel { grid-column: span 2; }
             header { flex-wrap: wrap; gap: 12px; }
             .header-left { flex-wrap: wrap; gap: 10px 16px; }
             .chart-wrapper { height: 340px; padding: 12px; }
@@ -288,6 +305,9 @@
             .dew-warning { font-size: 0.66rem; }
             .chart-wrapper { height: 300px; }
             .controls { padding: 14px; gap: 13px; }
+            .insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+            .insight-item:last-child { grid-column: 1 / -1; }
+            .insights-panel { padding: 12px; }
         }
     </style>
 </head>
@@ -338,8 +358,9 @@
             <div id="currDew" class="val">--</div>
             <div class="unit">&deg;C</div>
             <div id="dewTrend" class="trend"></div>
-            <div id="dewWarning" class="dew-warning">Taugefahr - Optik könnte beschlagen</div>
         </div>
+        <div class="dew-gap-line">Abstand zur Lufttemperatur: <strong id="currDewGap">--</strong> °C</div>
+        <div id="dewWarning" class="dew-warning">Taugefahr - Optik könnte beschlagen</div>
     </div>
 
     <div class="card">
@@ -350,6 +371,27 @@
             <div id="absTrend" class="trend"></div>
         </div>
     </div>
+
+    <section class="insights-panel" aria-labelledby="insightsTitle">
+        <h2 id="insightsTitle">Verlauf &amp; Entwicklung</h2>
+        <div class="insight-grid">
+            <article class="insight-item">
+                <div class="insight-label">Taupunkttrend · 30 min</div>
+                <div id="dewRateValue" class="insight-value">-- °C/h</div>
+                <div id="dewRateDetail" class="insight-detail">Wartet auf Messwerte</div>
+            </article>
+            <article class="insight-item">
+                <div class="insight-label">Zeit ab 80 % rF</div>
+                <div id="highHumidityValue" class="insight-value">--</div>
+                <div id="highHumidityDetail" class="insight-detail">Im gewählten Zeitraum</div>
+            </article>
+            <article class="insight-item">
+                <div class="insight-label">Temperaturtrend · 30 min</div>
+                <div id="coolingRateValue" class="insight-value">-- °C/h</div>
+                <div id="coolingRateDetail" class="insight-detail">Wartet auf Messwerte</div>
+            </article>
+        </div>
+    </section>
 
     <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
@@ -529,6 +571,68 @@
         return Number.isFinite(milliseconds) ? milliseconds : null;
     }
 
+    function calcRatePerHour(values, timestamps, windowMinutes = 30) {
+        const points = values.map((value, index) => ({ value, time: timestamps[index] }))
+            .filter(point => Number.isFinite(point.value) && Number.isFinite(point.time));
+        if (points.length < 3) return null;
+        const latest = Math.max(...points.map(point => point.time));
+        const recent = points.filter(point => point.time >= latest - windowMinutes * 60000);
+        if (recent.length < 3 || recent[recent.length - 1].time - recent[0].time < 6 * 60000) return null;
+
+        const hours = recent.map(point => (point.time - latest) / 3600000);
+        const meanHours = hours.reduce((sum, value) => sum + value, 0) / hours.length;
+        const meanValue = recent.reduce((sum, point) => sum + point.value, 0) / recent.length;
+        let numerator = 0, denominator = 0;
+        recent.forEach((point, index) => {
+            numerator += (hours[index] - meanHours) * (point.value - meanValue);
+            denominator += (hours[index] - meanHours) ** 2;
+        });
+        return denominator > 0 ? numerator / denominator : null;
+    }
+
+    function updateRateInsight(valueId, detailId, rate, risingText, fallingText) {
+        const valueElement = document.getElementById(valueId);
+        const detailElement = document.getElementById(detailId);
+        if (rate === null || !Number.isFinite(rate)) {
+            valueElement.textContent = "-- °C/h";
+            detailElement.textContent = "Mindestens 3 Messungen in 30 Minuten nötig";
+            valueElement.style.color = "var(--text-secondary)";
+            return;
+        }
+        const rounded = Math.abs(rate) < 0.05 ? 0 : Math.round(rate * 10) / 10;
+        valueElement.textContent = `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} °C/h`;
+        detailElement.textContent = rounded > 0.1 ? risingText : rounded < -0.1 ? fallingText : "Weitgehend stabil · Trend der letzten 30 Minuten";
+        valueElement.style.color = rounded < -0.1 ? "#60a5fa" : rounded > 0.1 ? "#f97316" : "var(--text-primary)";
+    }
+
+    function calcTimeAboveThreshold(values, timestamps, threshold, maxGapMinutes = 10) {
+        const points = values.map((value, index) => ({ value, time: timestamps[index] }))
+            .filter(point => Number.isFinite(point.value) && Number.isFinite(point.time));
+        let durationMs = 0, intervals = 0;
+        for (let i = 1; i < points.length; i++) {
+            const previous = points[i - 1];
+            const current = points[i];
+            const span = current.time - previous.time;
+            if (span <= 0 || span > maxGapMinutes * 60000) continue;
+            const previousHigh = previous.value >= threshold;
+            const currentHigh = current.value >= threshold;
+            if (previousHigh && currentHigh) durationMs += span;
+            else if (previousHigh !== currentHigh && current.value !== previous.value) {
+                const crossing = (threshold - previous.value) / (current.value - previous.value);
+                durationMs += span * (previousHigh ? crossing : 1 - crossing);
+            }
+            intervals++;
+        }
+        return intervals ? durationMs : null;
+    }
+
+    function formatEstimatedDuration(durationMs) {
+        const totalMinutes = Math.round(durationMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return hours ? `ca. ${hours} h ${minutes} min` : `ca. ${minutes} min`;
+    }
+
     function updateTrend(elementId, current, previous) {
         const el = document.getElementById(elementId);
         if (!el) return;
@@ -638,7 +742,7 @@
             }
 
             const keys = Object.keys(data).sort();
-            const labels = [], temps = [], hums = [], volts = [], dews = [], absHums = [];
+            const labels = [], temps = [], hums = [], volts = [], dews = [], absHums = [], timestamps = [];
             const showDate = parseInt(limit, 10) >= 480;
             const sessionMatch = session.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})$/);
             const sessionDate = sessionMatch ? `${sessionMatch[3]}.${sessionMatch[2]}.${sessionMatch[1]}` : '';
@@ -654,14 +758,15 @@
                     const pushTime = getFirebasePushTime(k);
                     const rowDate = pushTime ? new Date(pushTime) : (sessionMatch ? new Date(Number(sessionMatch[1]), Number(sessionMatch[2]) - 1, Number(sessionMatch[3])) : null);
                     const labelDate = rowDate ? `${String(rowDate.getDate()).padStart(2, '0')}.${String(rowDate.getMonth() + 1).padStart(2, '0')}.${rowDate.getFullYear()}` : sessionDate;
-                    if (pushTime) newestMeasurementTimestamp = pushTime;
-                    else if (rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)) {
-                        newestMeasurementTimestamp = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate(), Number(ts.slice(0, 2)), Number(ts.slice(3, 5)), Number(ts.slice(6, 8))).getTime();
-                    }
+                    const measurementTime = pushTime || (rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)
+                        ? new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate(), Number(ts.slice(0, 2)), Number(ts.slice(3, 5)), Number(ts.slice(6, 8))).getTime()
+                        : null);
+                    if (measurementTime) newestMeasurementTimestamp = measurementTime;
                     labels.push(showDate && labelDate ? labelDate + ' ' + timeLabel : timeLabel);
                     temps.push(t); hums.push(h); volts.push(v);
                     dews.push(calcDewPoint(t, h));
                     absHums.push(calcAbsHum(t, h));
+                    timestamps.push(Number.isFinite(measurementTime) ? measurementTime : null);
                 }
             });
 
@@ -682,6 +787,7 @@
 
                 document.getElementById('currDew').textContent = curDP.toFixed(1);
                 document.getElementById('currDew').style.color = getTempColor(curDP);
+                document.getElementById('currDewGap').textContent = (curT - curDP).toFixed(1);
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
                 document.getElementById('currAbs').style.color = '#64748b';
@@ -704,13 +810,30 @@
                 updateTrend('dewTrend', dews[idx], dews[prevIdx]);
                 updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
 
+                updateRateInsight('dewRateValue', 'dewRateDetail', calcRatePerHour(dews, timestamps), 'Taupunkt steigt · Taupunkttrend der letzten 30 Minuten', 'Taupunkt fällt · Taupunkttrend der letzten 30 Minuten');
+                updateRateInsight('coolingRateValue', 'coolingRateDetail', calcRatePerHour(temps, timestamps), 'Temperatur steigt · Temperaturtrend der letzten 30 Minuten', 'Temperatur fällt · Abkühlung der letzten 30 Minuten');
+                const highHumidityDuration = calcTimeAboveThreshold(hums, timestamps, 80);
+                document.getElementById('highHumidityValue').textContent = highHumidityDuration === null ? "--" : formatEstimatedDuration(highHumidityDuration);
+                document.getElementById('highHumidityDetail').textContent = highHumidityDuration === null
+                    ? "Zu wenige gültige Zeitabstände"
+                    : "Geschätzt ab 80 % rF · Lücken über 10 min ausgelassen";
+
                 chart.data.labels = labels;
                 chart.data.datasets[0].data = temps;
                 chart.data.datasets[1].data = hums;
                 chart.dewValues = dews;
                 
-                chart.options.scales.y1.min = 0;
-                chart.options.scales.y1.max = 100;
+                const minH = Math.min(...hums);
+                const maxH = Math.max(...hums);
+                const humidityPadding = Math.max(3, (maxH - minH) * 0.15);
+                let humidityAxisMin = Math.max(0, Math.floor(minH - humidityPadding));
+                let humidityAxisMax = Math.min(100, Math.ceil(maxH + humidityPadding));
+                if (humidityAxisMax - humidityAxisMin < 10) {
+                    humidityAxisMin = Math.max(0, Math.min(90, Math.floor((minH + maxH) / 2 - 5)));
+                    humidityAxisMax = humidityAxisMin + 10;
+                }
+                chart.options.scales.y1.min = humidityAxisMin;
+                chart.options.scales.y1.max = humidityAxisMax;
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
