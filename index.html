@@ -650,13 +650,13 @@
                 chart.update('none');                const delta = curT - curDP;
                 const dpCard = document.getElementById('dewPointCard');
                 const dewWarning = document.getElementById('dewWarning');
-                if (delta <= 2) {
+                if (delta <= 1.0) {
                     dpCard.style.borderColor = "#ef4444";
                     dpCard.style.background = "#450a0a";
                     dewWarning.textContent = "Taugefahr - Optik könnte beschlagen";
                     dewWarning.style.display = "block";
                     dewWarning.style.color = "#fca5a5";
-                } else if (delta <= 4) {
+                } else if (delta <= 1.5) {
                     dpCard.style.borderColor = "#f97316";
                     dpCard.style.background = "#431407";
                     dewWarning.textContent = "Warnung: Abstand zum Taupunkt nur " + delta.toFixed(1) + " °C";
