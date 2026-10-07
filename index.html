@@ -191,6 +191,14 @@
             height: 390px;
             box-shadow: var(--shadow);
         }
+        .chart-note {
+            grid-column: span 4;
+            margin: -8px 4px 0;
+            color: #fdba74;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-align: center;
+        }
 
         .controls { 
             grid-column: span 4;
@@ -288,7 +296,7 @@
 
         @media (max-width: 800px) {
             .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-            header, .chart-wrapper, .controls, .insights-panel { grid-column: span 2; }
+            header, .chart-wrapper, .chart-note, .controls, .insights-panel { grid-column: span 2; }
             header { flex-wrap: wrap; gap: 12px; }
             .header-left { flex-wrap: wrap; gap: 10px 16px; }
             .chart-wrapper { height: 340px; padding: 12px; }
@@ -390,6 +398,7 @@
     <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
     </div>
+    <div class="chart-note">Nebel möglich, Tau- und Beschlaggefahr</div>
 
     <div class="controls">
         <div class="control-group">
@@ -437,17 +446,23 @@
             ctx.save();
             for (let i = 0; i < values.length; i++) {
                 const gap = Number(points[i]) - Number(values[i]);
-                // Orange Taupunkt-Risikozone nur zwischen 1 und 2 °C Differenz.
-                if (!Number.isFinite(gap) || gap < 1 || gap > 2) continue;
+                if (!Number.isFinite(gap) || gap < 0 || gap > 1.5) continue;
                 const x = scales.x.getPixelForValue(i);
                 const previousX = i > 0 ? scales.x.getPixelForValue(i - 1) : x - 8;
                 const nextX = i < values.length - 1 ? scales.x.getPixelForValue(i + 1) : x + 8;
                 const width = Math.max(2, Math.min(x - previousX, nextX - x));
-                // Je näher die Differenz an 1 °C liegt, desto kräftiger orange.
-                // Die maximale Fläche bleibt dabei ungefähr 30 % transparent.
-                const orangeStrength = 1 - ((gap - 1) / (2 - 1));
-                const orangeAlpha = 0.08 + (orangeStrength * 0.22);
-                ctx.fillStyle = `rgba(249, 115, 22, ${orangeAlpha.toFixed(3)})`;
+                let zoneColor;
+                if (gap <= 1) {
+                    // Kritische Taupunktnähe: dezentes Rot, damit die Kurve sichtbar bleibt.
+                    const redAlpha = 0.12 + (0.10 * (1 - gap));
+                    zoneColor = `rgba(239, 68, 68, ${redAlpha.toFixed(3)})`;
+                } else {
+                    // Über 1 bis 1,5 °C: abgestuft von 16 % auf 8 % Deckkraft.
+                    const orangeStrength = (1.5 - gap) / 0.5;
+                    const orangeAlpha = 0.08 + (orangeStrength * 0.08);
+                    zoneColor = `rgba(249, 115, 22, ${orangeAlpha.toFixed(3)})`;
+                }
+                ctx.fillStyle = zoneColor;
                 ctx.fillRect(x - width, chartArea.top, width * 2, chartArea.bottom - chartArea.top);
             }
             ctx.restore();
@@ -808,11 +823,11 @@
                 const dpCard = document.getElementById('dewPointCard');
                 const dewWarning = document.getElementById('dewWarning');
                 if (delta <= 1.0) {
-                    dpCard.style.borderColor = "#ef4444";
-                    dpCard.style.background = "#450a0a";
-                    dewWarning.textContent = "Taugefahr - Optik könnte beschlagen";
+                    dpCard.style.borderColor = "#f97316";
+                    dpCard.style.background = "#431407";
+                    dewWarning.textContent = "Nebel möglich · Tau- oder Beschlaggefahr (Abstand " + delta.toFixed(1) + " °C)";
                     dewWarning.style.display = "block";
-                    dewWarning.style.color = "#fca5a5";
+                    dewWarning.style.color = "#fdba74";
                 } else if (delta <= 1.5) {
                     dpCard.style.borderColor = "#f97316";
                     dpCard.style.background = "#431407";
