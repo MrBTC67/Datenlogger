@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daten Logger V1.0 | Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -146,6 +147,15 @@
         .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
         .dew-gap-line { color: var(--text-secondary); font-size: 0.78rem; }
         .dew-gap-line strong { color: var(--text-primary); font-size: 0.9rem; }
+        .abs-label { font-size: 0.85rem; font-weight: 700; }
+        .gap-bar { position: relative; display: flex; height: 8px; margin: 6px 0 4px; }
+        .gap-zone { height: 100%; }
+        .gap-red { width: 20%; background: #b91c1c; border-radius: 4px 0 0 4px; }
+        .gap-orange { width: 10%; background: #c2410c; }
+        .gap-green { width: 70%; background: #166534; border-radius: 0 4px 4px 0; }
+        .gap-marker { position: absolute; top: -3px; left: 0; width: 3px; height: 14px; background: #f8fafc; border-radius: 2px; transform: translateX(-50%); transition: left 0.5s ease; }
+        .battery-runtime { color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; }
+        .battery-runtime.low { color: #ef4444; font-weight: 800; }
 
         .insights-panel {
             grid-column: span 4;
@@ -158,6 +168,7 @@
         .insights-panel h2 { margin: 0 0 12px; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
         .insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
         .insight-item { min-width: 0; padding: 13px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--bg-main); }
+        .insight-wide { grid-column: 1 / -1; }
         .insight-label { color: var(--text-secondary); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
         .insight-value { margin-top: 7px; font-size: clamp(1.15rem, 2.4vw, 1.55rem); font-weight: 700; color: var(--text-primary); }
         .insight-detail { margin-top: 5px; color: var(--text-secondary); font-size: 0.7rem; line-height: 1.4; }
@@ -334,6 +345,7 @@
                     </div>
                     <div id="currVolt">-- V</div>
                     <div id="batteryPercent" class="battery-percent">--%</div>
+                    <div id="batteryRuntime" class="battery-runtime"></div>
                 </div>
             </div>
         </div>
@@ -370,6 +382,10 @@
             <div id="dewTrend" class="trend"></div>
         </div>
         <div class="dew-gap-line">Abstand zur Lufttemperatur: <strong id="currDewGap">--</strong> °C</div>
+        <div class="gap-bar" title="Abstand Temperatur − Taupunkt: rot bis 1,0 °C, orange bis 1,5 °C, Skala bis 5 °C">
+            <div class="gap-zone gap-red"></div><div class="gap-zone gap-orange"></div><div class="gap-zone gap-green"></div>
+            <div id="gapMarker" class="gap-marker"></div>
+        </div>
         <div id="dewWarning" class="dew-warning">Taugefahr - Optik könnte beschlagen</div>
     </div>
 
@@ -380,6 +396,8 @@
             <div class="unit">g/m&sup3;</div>
             <div id="absTrend" class="trend"></div>
         </div>
+        <div id="absLabel" class="abs-label">--</div>
+        <div id="absDetail" class="dew-gap-line"></div>
     </div>
 
     <section class="insights-panel" aria-labelledby="insightsTitle">
@@ -395,13 +413,18 @@
                 <div id="coolingRateValue" class="insight-value">-- °C/h</div>
                 <div id="coolingRateDetail" class="insight-detail">Wartet auf Messwerte</div>
             </article>
+            <article class="insight-item insight-wide">
+                <div class="insight-label">Prognose · nächste Warnstufe</div>
+                <div id="forecastValue" class="insight-value">--</div>
+                <div id="forecastDetail" class="insight-detail">Wartet auf Messwerte</div>
+            </article>
         </div>
     </section>
 
     <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
     </div>
-    <div id="chartNote" class="chart-note" style="display: none;">Nebel möglich, Tau- und Beschlaggefahr</div>
+    <div id="chartNote" class="chart-note" style="display: none;">Nebel möglich, Tau-, Reif- und Beschlaggefahr</div>
 
     <div class="controls">
         <div class="control-group">
@@ -440,23 +463,30 @@
     let newestMeasurementTimestamp = 0;
     const LIVE_THRESHOLD_MS = 6 * 60 * 1000;
     const FROST_WARN_TEMP = 2.0;
+    const GAP_BREAK_MS = 10 * 60 * 1000; // Ab 10 Minuten ohne Messung bricht die Linie ab
     const dewRiskZones = {
         id: 'dewRiskZones',
         beforeDatasetsDraw(chart) {
-            const values = chart.dewValues;
-            if (!values || !chart.chartArea || !chart.scales.x) return;
-            const points = chart.data.datasets[0].data;
+            const riskPoints = chart.riskPoints;
+            if (!riskPoints || !chart.chartArea || !chart.scales.x) return;
             const { ctx, chartArea, scales } = chart;
             ctx.save();
-            for (let i = 0; i < values.length; i++) {
-                const gap = Number(points[i]) - Number(values[i]);
+            ctx.beginPath();
+            ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+            ctx.clip();
+            for (const point of riskPoints) {
+                const gap = point.temp - point.dew;
                 if (!Number.isFinite(gap) || gap < 0 || gap > 1.5) continue;
-                const x = scales.x.getPixelForValue(i);
-                const previousX = i > 0 ? scales.x.getPixelForValue(i - 1) : x - 8;
-                const nextX = i < values.length - 1 ? scales.x.getPixelForValue(i + 1) : x + 8;
-                const width = Math.max(2, Math.min(x - previousX, nextX - x));
+                const x = scales.x.getPixelForValue(point.time);
+                // Halbe Messintervallbreite (90 s) je Seite: aufeinanderfolgende Messungen schließen lückenlos an.
+                const width = Math.max(2, scales.x.getPixelForValue(point.time + 90000) - x);
+                if (!Number.isFinite(x) || !Number.isFinite(width)) continue;
                 let zoneColor;
-                if (gap <= 1) {
+                if (point.temp <= FROST_WARN_TEMP && point.dew <= 0) {
+                    // Reifgefahr: kühles Eisblau statt Orange/Rot, damit Reif von Tau unterscheidbar ist.
+                    const frostAlpha = 0.16 + (0.14 * (1.5 - gap) / 1.5);
+                    zoneColor = `rgba(186, 230, 253, ${frostAlpha.toFixed(3)})`;
+                } else if (gap <= 1) {
                     // Kritische Taupunktnähe: dezentes Rot, damit die Kurve sichtbar bleibt.
                     const redAlpha = 0.12 + (0.10 * (1 - gap));
                     zoneColor = `rgba(239, 68, 68, ${redAlpha.toFixed(3)})`;
@@ -510,6 +540,7 @@
                     tension: 0.35, 
                     pointRadius: 0,
                     borderWidth: 3.5,
+                    spanGaps: GAP_BREAK_MS,
                     borderColor: '#facc15',
                     backgroundColor: 'transparent',
                     fill: false
@@ -522,6 +553,7 @@
                     tension: 0.35, 
                     pointRadius: 0,
                     borderWidth: 2.5,
+                    spanGaps: GAP_BREAK_MS,
                     backgroundColor: 'rgba(59, 130, 246, 0.08)',
                     fill: false
                 },
@@ -533,6 +565,7 @@
                     tension: 0.35,
                     pointRadius: 0,
                     borderWidth: 1.5,
+                    spanGaps: GAP_BREAK_MS,
                     backgroundColor: 'transparent',
                     fill: false
                 }
@@ -552,14 +585,19 @@
                     grid: { display: false }, 
                     ticks: { color: '#3b82f6', font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
                 },
-                x: { 
+                x: {
+                    type: 'time',
+                    time: { displayFormats: { minute: 'HH:mm', hour: 'HH:mm', day: 'dd.MM.' } },
                     grid: { display: false },
-                    ticks: { color: '#94a3b8', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8 } 
+                    ticks: { color: '#94a3b8', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8, maxRotation: 0 }
                 }
             },
             plugins: { 
+                tooltip: { enabled: false },
                 legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#3b82f6' : item.datasetIndex === 2 ? '#94a3b8' : '#facc15'; return item; }) } },
                 annotation: { annotations: {
+                    frostZone: { type: 'box', yMin: -40, yMax: 2, backgroundColor: 'rgba(96, 165, 250, 0.10)', borderWidth: 0 },
+                    frostLine: { type: 'line', scaleID: 'y', value: 0, borderColor: 'rgba(147, 197, 253, 0.8)', borderWidth: 1.5, borderDash: [5, 4], label: { display: true, content: '0 °C Frost', position: 'center', backgroundColor: '#1e293b', color: '#93c5fd', font: { size: 9, weight: '700' } }},
                     coolZone: { type: 'box', yMin: -40, yMax: 10, backgroundColor: 'rgba(59, 130, 246, 0.035)', borderWidth: 0 },
                     mildZone: { type: 'box', yMin: 10, yMax: 20, backgroundColor: 'rgba(16, 185, 129, 0.035)', borderWidth: 0 },
                     warmZone: { type: 'box', yMin: 20, yMax: 30, backgroundColor: 'rgba(234, 179, 8, 0.035)', borderWidth: 0 },
@@ -626,6 +664,48 @@
         valueElement.textContent = `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} °C/h`;
         detailElement.textContent = rounded > 0.1 ? risingText : rounded < -0.1 ? fallingText : "Weitgehend stabil · Trend der letzten 30 Minuten";
         valueElement.style.color = rounded < -0.1 ? "#60a5fa" : rounded > 0.1 ? "#f97316" : "var(--text-primary)";
+    }
+
+    function formatEta(hours) {
+        const minutes = Math.max(5, Math.round(hours * 60 / 5) * 5);
+        const when = new Date(Date.now() + minutes * 60000).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+        const span = minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)} h${minutes % 60 ? ' ' + (minutes % 60) + ' min' : ''}`;
+        return `in ca. ${span} (gegen ${when} Uhr)`;
+    }
+
+    function updateForecast(curT, curDP, tempRate, dewRate, stale) {
+        const valueEl = document.getElementById('forecastValue');
+        const detailEl = document.getElementById('forecastDetail');
+        const FORECAST_HORIZON_H = 6;
+        const MIN_RATE = 0.1; // °C/h, darunter gilt der Trend als stabil
+        if (stale || tempRate === null || dewRate === null) {
+            valueEl.textContent = "--";
+            valueEl.style.color = "var(--text-secondary)";
+            detailEl.textContent = stale ? "Keine aktuellen Messwerte" : "Zu wenige Messwerte für eine Prognose";
+            return;
+        }
+        const gapNow = curT - curDP;
+        const gapRate = tempRate - dewRate;
+        const active = [], upcoming = [];
+        if (gapNow <= 1.5) active.push("Taugefahr (Abstand ≤ 1,5 °C)");
+        else if (gapRate < -MIN_RATE) upcoming.push({ hours: (gapNow - 1.5) / -gapRate, text: "Taupunktnähe (Abstand ≤ 1,5 °C)" });
+        if (curT <= FROST_WARN_TEMP) active.push("Frostwarnung (≤ 2 °C)");
+        else if (tempRate < -MIN_RATE) upcoming.push({ hours: (curT - FROST_WARN_TEMP) / -tempRate, text: "Frostwarnung (≤ 2 °C)" });
+        upcoming.sort((a, b) => a.hours - b.hours);
+        const next = upcoming.find(item => item.hours <= FORECAST_HORIZON_H);
+        if (active.length) {
+            valueEl.textContent = "Bereits aktiv";
+            valueEl.style.color = "#fca5a5";
+            detailEl.textContent = active.join(" · ") + (next ? " · danach: " + next.text + " " + formatEta(next.hours) : "");
+        } else if (next) {
+            valueEl.textContent = formatEta(next.hours);
+            valueEl.style.color = "#fdba74";
+            detailEl.textContent = next.text + " bei gleichbleibendem Trend · Hochrechnung, keine Wettervorhersage";
+        } else {
+            valueEl.textContent = "Keine Annäherung";
+            valueEl.style.color = "var(--text-primary)";
+            detailEl.textContent = "Bei gleichbleibendem Trend keine Warnstufe in den nächsten " + FORECAST_HORIZON_H + " Stunden";
+        }
     }
 
     function updateTrend(elementId, current, previous) {
@@ -739,10 +819,8 @@
             }
 
             const keys = Object.keys(data).sort();
-            const labels = [], temps = [], hums = [], volts = [], dews = [], absHums = [], timestamps = [];
-            const showDate = parseInt(limit, 10) >= 480;
+            const temps = [], hums = [], volts = [], dews = [], absHums = [], timestamps = [];
             const sessionMatch = session.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})$/);
-            const sessionDate = sessionMatch ? `${sessionMatch[3]}.${sessionMatch[2]}.${sessionMatch[1]}` : '';
             
             keys.forEach(k => {
                 const entry = data[k];
@@ -751,15 +829,12 @@
                     const h = parseFloat(entry.h ?? 0);
                     const v = parseFloat(entry.v ?? 0);
                     const ts = String(entry.ts || k);
-                    const timeLabel = ts.split(' ').pop();
                     const pushTime = getFirebasePushTime(k);
                     const rowDate = pushTime ? new Date(pushTime) : (sessionMatch ? new Date(Number(sessionMatch[1]), Number(sessionMatch[2]) - 1, Number(sessionMatch[3])) : null);
-                    const labelDate = rowDate ? `${String(rowDate.getDate()).padStart(2, '0')}.${String(rowDate.getMonth() + 1).padStart(2, '0')}.${rowDate.getFullYear()}` : sessionDate;
                     const measurementTime = pushTime || (rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)
                         ? new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate(), Number(ts.slice(0, 2)), Number(ts.slice(3, 5)), Number(ts.slice(6, 8))).getTime()
                         : null);
                     if (measurementTime) newestMeasurementTimestamp = measurementTime;
-                    labels.push(showDate && labelDate ? labelDate + ' ' + timeLabel : timeLabel);
                     temps.push(t); hums.push(h); volts.push(v);
                     dews.push(calcDewPoint(t, h));
                     absHums.push(calcAbsHum(t, h));
@@ -785,9 +860,25 @@
                 document.getElementById('currDew').textContent = curDP.toFixed(1);
                 document.getElementById('currDew').style.color = getTempColor(curDP);
                 document.getElementById('currDewGap').textContent = (curT - curDP).toFixed(1);
+                document.getElementById('gapMarker').style.left = (Math.max(0, Math.min(curT - curDP, 5)) / 5 * 100) + "%";
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
                 document.getElementById('currAbs').style.color = '#64748b';
+
+                const absMax = calcAbsHum(curT, 100);
+                let absText, absColor;
+                if (curH < 30) { absText = "Sehr trocken"; absColor = "#d97706"; }
+                else if (curH < 40) { absText = "Trocken"; absColor = "#eab308"; }
+                else if (curH < 60) { absText = "Angenehm"; absColor = "#22c55e"; }
+                else if (curH < 70) { absText = "Leicht feucht"; absColor = "#22c55e"; }
+                else if (curH < 85) { absText = "Feucht"; absColor = "#3b82f6"; }
+                else if (curH < 95) { absText = "Sehr feucht"; absColor = "#60a5fa"; }
+                else { absText = "Fast gesättigt"; absColor = "#93c5fd"; }
+                if (absHums[idx] >= 15 && curT >= 20) { absText += " · schwül"; absColor = "#f97316"; }
+                const absLabelEl = document.getElementById('absLabel');
+                absLabelEl.textContent = absText;
+                absLabelEl.style.color = absColor;
+                document.getElementById('absDetail').innerHTML = "<strong>" + curH.toFixed(0) + " %</strong> von max. " + absMax.toFixed(1) + " g/m³ bei " + curT.toFixed(1) + " °C";
                 
                 const voltEl = document.getElementById('currVolt');
                 const batEl = document.getElementById('batLevel');
@@ -802,19 +893,41 @@
                 document.getElementById('batteryPercent').textContent = "ca. " + Math.round(batPct) + "%";
                 document.getElementById('batteryPercent').title = "Grobe Spannungsanzeige zwischen 3,4 V und 4,2 V; keine genaue Ladezustandsmessung";
 
+                const batRuntime = document.getElementById('batteryRuntime');
+                const lowBattery = curV > 0 && curV < 3.6;
+                const voltRate = calcRatePerHour(volts, timestamps, 360);
+                let runtimeText;
+                if (voltRate === null) runtimeText = "Restlaufzeit: --";
+                else if (voltRate > -0.002) runtimeText = "Spannung stabil oder lädt";
+                else {
+                    const hoursLeft = (curV - 3.4) / -voltRate;
+                    runtimeText = hoursLeft <= 0 ? "Restlaufzeit: leer"
+                        : hoursLeft < 1 ? "Restlaufzeit: < 1 h"
+                        : hoursLeft < 48 ? "Restlaufzeit: ca. " + Math.round(hoursLeft) + " h"
+                        : hoursLeft < 720 ? "Restlaufzeit: ca. " + Math.round(hoursLeft / 24) + " Tage"
+                        : "Restlaufzeit: > 30 Tage";
+                }
+                batRuntime.textContent = lowBattery ? "Akku schwach · " + runtimeText : runtimeText;
+                batRuntime.classList.toggle('low', lowBattery);
+                batRuntime.title = "Grobe Schätzung aus dem Spannungsverlauf der letzten Stunden bis 3,4 V";
+
                 updateTrend('tempTrend', temps[idx], temps[prevIdx]);
                 updateHumidityTrend('humTrend', hums[idx], hums[prevIdx]);
                 updateTrend('dewTrend', dews[idx], dews[prevIdx]);
                 updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
 
                 const trendStale = !newestMeasurementTimestamp || (Date.now() - newestMeasurementTimestamp) >= LIVE_THRESHOLD_MS;
-                updateRateInsight('dewRateValue', 'dewRateDetail', calcRatePerHour(dews, timestamps), 'Taupunkt steigt · Taupunkttrend der letzten 30 Minuten', 'Taupunkt fällt · Taupunkttrend der letzten 30 Minuten', trendStale);
-                updateRateInsight('coolingRateValue', 'coolingRateDetail', calcRatePerHour(temps, timestamps), 'Temperatur steigt · Temperaturtrend der letzten 30 Minuten', 'Temperatur fällt · Abkühlung der letzten 30 Minuten', trendStale);
-                chart.data.labels = labels;
-                chart.data.datasets[0].data = temps;
-                chart.data.datasets[1].data = hums;
-                chart.data.datasets[2].data = dews;
-                chart.dewValues = dews;
+                const dewRate = calcRatePerHour(dews, timestamps);
+                const tempRate = calcRatePerHour(temps, timestamps);
+                updateRateInsight('dewRateValue', 'dewRateDetail', dewRate, 'Taupunkt steigt · Taupunkttrend der letzten 30 Minuten', 'Taupunkt fällt · Taupunkttrend der letzten 30 Minuten', trendStale);
+                updateRateInsight('coolingRateValue', 'coolingRateDetail', tempRate, 'Temperatur steigt · Temperaturtrend der letzten 30 Minuten', 'Temperatur fällt · Abkühlung der letzten 30 Minuten', trendStale);
+                updateForecast(curT, curDP, tempRate, dewRate, trendStale);
+
+                const toPoints = values => values.map((y, i) => ({ x: timestamps[i], y })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+                chart.data.datasets[0].data = toPoints(temps);
+                chart.data.datasets[1].data = toPoints(hums);
+                chart.data.datasets[2].data = toPoints(dews);
+                chart.riskPoints = timestamps.map((time, i) => ({ time, temp: temps[i], dew: dews[i] })).filter(p => Number.isFinite(p.time));
                 const hasRiskZone = temps.some((t, i) => { const gap = t - dews[i]; return Number.isFinite(gap) && gap >= 0 && gap <= 1.5; });
                 document.getElementById('chartNote').style.display = hasRiskZone ? 'block' : 'none';
                 
