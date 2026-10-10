@@ -1,0 +1,903 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daten Logger V1.0 | Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #0f172a;       
+            --card-bg: #1e293b;       
+            --chart-bg: #1e293b;
+            --card-border: #334155;   
+            --text-primary: #f8fafc;  
+            --text-secondary: #94a3b8;
+            --accent-volt-bg: #0f172a;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
+            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-main);
+            color: var(--text-primary); 
+            margin: 0; 
+            padding: 15px; 
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container { 
+            width: 100%;
+            max-width: 1200px; 
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+
+        header {
+            grid-column: span 4;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0 15px 0;
+            border-bottom: 2px solid var(--card-border);
+        }
+
+        header h1 { 
+            margin: 0; 
+            font-size: 1.1rem; 
+            font-weight: 700; 
+            text-transform: uppercase;
+            letter-spacing: -0.2px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .header-voltage {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .header-voltage .battery-container {
+            gap: 6px;
+        }
+
+        .header-voltage #currVolt {
+            font-size: 0.9rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            background: var(--card-bg);
+            padding: 6px 12px;
+            border-radius: 50px;
+            border: 1px solid var(--card-border);
+        }
+
+        .status-copy { display: flex; flex-direction: column; gap: 2px; }
+        .status-age { color: var(--text-secondary); font-size: 0.65rem; font-weight: 500; }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #ef4444;
+            border-radius: 50%;
+        }
+
+        .dot.online {
+            background: #22c55e;
+            box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .card { 
+            background: var(--card-bg); 
+            padding: 15px; 
+            border-radius: 20px; 
+            border: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: var(--shadow);
+            transition: border-color 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+        }
+        .card.stale { opacity: 0.4; }
+        .card.stale .dew-warning, .chart-note.stale { display: none !important; }
+
+        .card h3 { 
+            margin: 0; 
+            font-size: 0.65rem; 
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            color: var(--text-secondary);
+        }
+
+        .val-row {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .val { font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 700; color: var(--text-primary); transition: color 0.3s ease; }
+        .unit { font-size: 0.95rem; color: var(--text-secondary); font-weight: 500; }
+        .trend { font-size: 1.15rem; margin-left: auto; }
+
+        .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
+        .dew-gap-line { color: var(--text-secondary); font-size: 0.78rem; }
+        .dew-gap-line strong { color: var(--text-primary); font-size: 0.9rem; }
+
+        .insights-panel {
+            grid-column: span 4;
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+        }
+        .insights-panel h2 { margin: 0 0 12px; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .insight-item { min-width: 0; padding: 13px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--bg-main); }
+        .insight-label { color: var(--text-secondary); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .insight-value { margin-top: 7px; font-size: clamp(1.15rem, 2.4vw, 1.55rem); font-weight: 700; color: var(--text-primary); }
+        .insight-detail { margin-top: 5px; color: var(--text-secondary); font-size: 0.7rem; line-height: 1.4; }
+
+        .delete-group {
+            border: 1px solid rgba(239, 68, 68, 0.45);
+            background: rgba(127, 29, 29, 0.16);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .delete-group p { margin: 0; color: #fecaca; font-size: 0.78rem; line-height: 1.45; }
+        .danger-button {
+            background: #7f1d1d;
+            color: #fecaca;
+            border: 1px solid #ef4444;
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .danger-button:hover { background: #991b1b; }
+        .danger-button:focus-visible, select:focus-visible { outline: 3px solid #fca5a5; outline-offset: 2px; }
+        .chart-wrapper { 
+            grid-column: span 4;
+            background: var(--chart-bg); 
+            padding: 15px; 
+            border-radius: 24px; 
+            border: 1px solid var(--card-border);
+            height: 390px;
+            box-shadow: var(--shadow);
+        }
+        .chart-note {
+            grid-column: span 4;
+            margin: -8px 4px 0;
+            color: #fdba74;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .controls { 
+            grid-column: span 4;
+            display: flex; 
+            flex-direction: column;
+            gap: 16px; 
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 24px;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .control-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; 
+        }
+
+        label { 
+            font-weight: 700; 
+            font-size: 0.7rem; 
+            color: var(--text-secondary); 
+            text-transform: uppercase;
+            padding-left: 4px;
+        }
+        
+        select { 
+            background: var(--bg-main); 
+            color: var(--text-primary); 
+            border: 1px solid var(--card-border); 
+            padding: 14px 16px; 
+            border-radius: 12px; 
+            font-size: 15px; 
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 18px;
+        }
+
+        .volt-display {
+            background: var(--accent-volt-bg);
+            border: 1px solid var(--card-border);
+            padding: 16px;
+            border-radius: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .battery-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .battery-icon {
+            width: 35px;
+            height: 18px;
+            border: 2px solid #64748b;
+            border-radius: 3px;
+            position: relative;
+            padding: 1px;
+        }
+        .battery-icon::after {
+            content: '';
+            position: absolute;
+            right: -5px;
+            top: 3px;
+            width: 3px;
+            height: 8px;
+            background: #64748b;
+            border-radius: 0 2px 2px 0;
+        }
+        .battery-level {
+            height: 100%;
+            width: 0%;
+            background: #22c55e;
+            border-radius: 1px;
+            transition: width 0.5s ease, background-color 0.5s ease;
+        }
+
+        #currVolt { font-weight: 800; font-size: 1.2rem; transition: color 0.3s ease; }
+        .battery-percent { min-width: 3.2em; color: var(--text-primary); font-size: 0.8rem; font-weight: 700; }
+
+        @media (min-width: 801px) {
+            .controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
+            .delete-group { grid-column: 1 / -1; }
+        }
+
+        @media (max-width: 800px) {
+            .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            header, .chart-wrapper, .chart-note, .controls, .insights-panel { grid-column: span 2; }
+            header { flex-wrap: wrap; gap: 12px; }
+            .header-left { flex-wrap: wrap; gap: 10px 16px; }
+            .chart-wrapper { height: 340px; padding: 12px; }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .container { gap: 8px; }
+            header h1 { font-size: 0.95rem; }
+            .header-voltage { font-size: 0.72rem; }
+            .card { padding: 13px 11px; border-radius: 15px; }
+            .val { font-size: 1.65rem; }
+            .card h3 { font-size: 0.68rem; }
+            .dew-warning { font-size: 0.66rem; }
+            .chart-wrapper { height: 300px; }
+            .controls { padding: 14px; gap: 13px; }
+            .insight-grid { gap: 8px; }
+            .insights-panel { padding: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div class="header-left">
+            <h1>Daten Logger <span style="color: #3b82f6;">V1.0</span></h1>
+            <div class="header-voltage" aria-label="Akkuspannung">
+                <span>Akku:</span>
+                <div class="battery-container">
+                    <div class="battery-icon">
+                    <div id="batLevel" class="battery-level"></div>
+                    </div>
+                    <div id="currVolt">-- V</div>
+                    <div id="batteryPercent" class="battery-percent">--%</div>
+                </div>
+            </div>
+        </div>
+        <div class="status-indicator">
+            <div id="statusDot" class="dot"></div>
+            <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
+        </div>
+    </header>
+
+    <div class="card" id="tempCard">
+        <h3>Temperatur</h3>
+        <div class="val-row">
+            <div id="currTemp" class="val">--</div>
+            <div class="unit">&deg;C</div>
+            <div id="tempTrend" class="trend"></div>
+        </div>
+        <div id="frostWarning" class="dew-warning" style="color: #fca5a5;"></div>
+    </div>
+
+    <div class="card" id="humCard">
+        <h3>Feuchte</h3>
+        <div class="val-row">
+            <div id="currHum" class="val">--</div>
+            <div class="unit">%</div>
+            <div id="humTrend" class="trend"></div>
+        </div>
+    </div>
+
+    <div id="dewPointCard" class="card">
+        <h3>Taupunkt</h3>
+        <div class="val-row">
+            <div id="currDew" class="val">--</div>
+            <div class="unit">&deg;C</div>
+            <div id="dewTrend" class="trend"></div>
+        </div>
+        <div class="dew-gap-line">Abstand zur Lufttemperatur: <strong id="currDewGap">--</strong> °C</div>
+        <div id="dewWarning" class="dew-warning">Taugefahr - Optik könnte beschlagen</div>
+    </div>
+
+    <div class="card">
+        <h3>Abs. Feuchte</h3>
+        <div class="val-row">
+            <div id="currAbs" class="val">--</div>
+            <div class="unit">g/m&sup3;</div>
+            <div id="absTrend" class="trend"></div>
+        </div>
+    </div>
+
+    <section class="insights-panel" aria-labelledby="insightsTitle">
+        <h2 id="insightsTitle">Verlauf &amp; Entwicklung</h2>
+        <div class="insight-grid">
+            <article class="insight-item">
+                <div class="insight-label">Taupunkttrend · 30 min</div>
+                <div id="dewRateValue" class="insight-value">-- °C/h</div>
+                <div id="dewRateDetail" class="insight-detail">Wartet auf Messwerte</div>
+            </article>
+            <article class="insight-item">
+                <div class="insight-label">Temperaturtrend · 30 min</div>
+                <div id="coolingRateValue" class="insight-value">-- °C/h</div>
+                <div id="coolingRateDetail" class="insight-detail">Wartet auf Messwerte</div>
+            </article>
+        </div>
+    </section>
+
+    <div class="chart-wrapper">
+        <canvas id="astroChart"></canvas>
+    </div>
+    <div id="chartNote" class="chart-note" style="display: none;">Nebel möglich, Tau- und Beschlaggefahr</div>
+
+    <div class="controls">
+        <div class="control-group">
+            <label>Datenansicht</label>
+            <div class="system-status">Live-Datenlogger</div>
+        </div>
+
+        <div class="control-group">
+            <label for="sessionSelect">Aktive Session</label>
+            <select id="sessionSelect" onchange="updateData()"></select>
+        </div>
+        
+        <div class="control-group">
+            <label for="limitSelect">Zeitraum im Diagramm</label>
+            <select id="limitSelect" onchange="updateData()">
+                <option value="20">Letzte 60 Minuten</option>
+                <option value="80" selected>Letzte 4 Stunden</option>
+                <option value="240">Letzte 12 Stunden</option>
+                <option value="480">Letzte 24 Stunden</option>
+                <option value="10000">Ganze Session</option>
+            </select>
+        </div>
+
+        <div class="delete-group">
+            <p>Diese Aktion entfernt die ausgewählte Session dauerhaft aus Firebase.</p>
+            <button id="deleteSessionBtn" class="danger-button" type="button" onclick="deleteSelectedSession()">Session dauerhaft löschen</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    if (typeof ChartjsPluginAnnotation !== 'undefined') { Chart.register(ChartjsPluginAnnotation); }
+
+    const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
+    const ctx = document.getElementById('astroChart').getContext('2d');
+    let newestMeasurementTimestamp = 0;
+    const LIVE_THRESHOLD_MS = 6 * 60 * 1000;
+    const FROST_WARN_TEMP = 2.0;
+    const dewRiskZones = {
+        id: 'dewRiskZones',
+        beforeDatasetsDraw(chart) {
+            const values = chart.dewValues;
+            if (!values || !chart.chartArea || !chart.scales.x) return;
+            const points = chart.data.datasets[0].data;
+            const { ctx, chartArea, scales } = chart;
+            ctx.save();
+            for (let i = 0; i < values.length; i++) {
+                const gap = Number(points[i]) - Number(values[i]);
+                if (!Number.isFinite(gap) || gap < 0 || gap > 1.5) continue;
+                const x = scales.x.getPixelForValue(i);
+                const previousX = i > 0 ? scales.x.getPixelForValue(i - 1) : x - 8;
+                const nextX = i < values.length - 1 ? scales.x.getPixelForValue(i + 1) : x + 8;
+                const width = Math.max(2, Math.min(x - previousX, nextX - x));
+                let zoneColor;
+                if (gap <= 1) {
+                    // Kritische Taupunktnähe: dezentes Rot, damit die Kurve sichtbar bleibt.
+                    const redAlpha = 0.12 + (0.10 * (1 - gap));
+                    zoneColor = `rgba(239, 68, 68, ${redAlpha.toFixed(3)})`;
+                } else {
+                    // Über 1 bis 1,5 °C: abgestuft von 16 % auf 8 % Deckkraft.
+                    const orangeStrength = (1.5 - gap) / 0.5;
+                    const orangeAlpha = 0.08 + (orangeStrength * 0.08);
+                    zoneColor = `rgba(249, 115, 22, ${orangeAlpha.toFixed(3)})`;
+                }
+                ctx.fillStyle = zoneColor;
+                ctx.fillRect(x - width, chartArea.top, width * 2, chartArea.bottom - chartArea.top);
+            }
+            ctx.restore();
+        }
+    };
+    Chart.register(dewRiskZones);
+
+    function getTempColor(t) {
+        if (t >= 40) return '#ef4444';
+        if (t >= 30) return '#f97316';
+        if (t >= 20) return '#eab308';
+        if (t >= 10) return '#10b981';
+        if (t >= 0)  return '#06b6d4';
+        if (t >= -10) return '#3b82f6';
+        if (t >= -20) return '#8b5cf6';
+        return '#6d28d9';
+    }
+
+    function getHumColor(h) {
+        if (h < 40) return '#d97706';
+        if (h < 75) return '#22c55e';
+        if (h < 90) return '#3b82f6';
+        return '#60a5fa';
+    }
+
+    function getVoltColor(v) {
+        if (v > 4.0) return '#22c55e';
+        if (v > 3.7) return '#f97316';
+        return '#ef4444'; 
+    }
+
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: { 
+            labels: [], 
+            datasets: [
+                { 
+                    label: 'Temperatur', 
+                    data: [], 
+                    yAxisID: 'y', 
+                    tension: 0.35, 
+                    pointRadius: 0,
+                    borderWidth: 3.5,
+                    borderColor: '#facc15',
+                    backgroundColor: 'transparent',
+                    fill: false
+                },
+                { 
+                    label: 'Feuchtigkeit', 
+                    borderColor: '#60a5fa',
+                    data: [], 
+                    yAxisID: 'y1', 
+                    tension: 0.35, 
+                    pointRadius: 0,
+                    borderWidth: 2.5,
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    fill: false
+                },
+                {
+                    label: 'Taupunkt',
+                    borderColor: '#94a3b8',
+                    data: [],
+                    yAxisID: 'y',
+                    tension: 0.35,
+                    pointRadius: 0,
+                    borderWidth: 1.5,
+                    backgroundColor: 'transparent',
+                    fill: false
+                }
+            ]
+        },
+        options: {
+            responsive: true, 
+            maintainAspectRatio: false, 
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { 
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
+                    ticks: { color: '#d1d5db', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '' + String.fromCharCode(176) + 'C' }
+                },
+                y1: { 
+                    position: 'right', 
+                    grid: { display: false }, 
+                    ticks: { color: '#3b82f6', font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: { color: '#94a3b8', font: { size: 9 }, autoSkip: true, maxTicksLimit: 8 } 
+                }
+            },
+            plugins: { 
+                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#3b82f6' : item.datasetIndex === 2 ? '#94a3b8' : '#facc15'; return item; }) } },
+                annotation: { annotations: {
+                    coolZone: { type: 'box', yMin: -40, yMax: 10, backgroundColor: 'rgba(59, 130, 246, 0.035)', borderWidth: 0 },
+                    mildZone: { type: 'box', yMin: 10, yMax: 20, backgroundColor: 'rgba(16, 185, 129, 0.035)', borderWidth: 0 },
+                    warmZone: { type: 'box', yMin: 20, yMax: 30, backgroundColor: 'rgba(234, 179, 8, 0.035)', borderWidth: 0 },
+                    hotZone: { type: 'box', yMin: 30, yMax: 60, backgroundColor: 'rgba(239, 68, 68, 0.035)', borderWidth: 0 },
+                    minLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(59, 130, 246, 0.3)', borderWidth: 1.5, label: { display: true, position: 'start', backgroundColor: '#1e293b', color: '#f8fafc', font: { size: 9, weight: '700' } }},
+                    maxLine: { type: 'line', scaleID: 'y', borderColor: 'rgba(239, 68, 68, 0.3)', borderWidth: 1.5, label: { display: true, position: 'end', backgroundColor: '#1e293b', color: '#f8fafc', font: { size: 9, weight: '700' } }}
+                }}
+            }
+        }
+    });
+
+    function calcDewPoint(t, h) {
+        if (h <= 0) return t - 50;
+        const a = 17.625, b = 243.04;
+        const alpha = ((a * t) / (b + t)) + Math.log(h / 100);
+        return (b * alpha) / (a - alpha);
+    }
+
+    function calcAbsHum(t, h) {
+        return (6.112 * Math.exp((17.67 * t) / (t + 243.5)) * h * 2.1674) / (273.15 + t);
+    }
+
+    function getFirebasePushTime(key) {
+        const alphabet = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+        if (typeof key !== 'string' || key.length < 8) return null;
+        let milliseconds = 0;
+        for (const char of key.slice(0, 8)) {
+            const digit = alphabet.indexOf(char);
+            if (digit < 0) return null;
+            milliseconds = milliseconds * 64 + digit;
+        }
+        return Number.isFinite(milliseconds) ? milliseconds : null;
+    }
+
+    function calcRatePerHour(values, timestamps, windowMinutes = 30) {
+        const points = values.map((value, index) => ({ value, time: timestamps[index] }))
+            .filter(point => Number.isFinite(point.value) && Number.isFinite(point.time));
+        if (points.length < 3) return null;
+        const latest = Math.max(...points.map(point => point.time));
+        const recent = points.filter(point => point.time >= latest - windowMinutes * 60000);
+        if (recent.length < 3 || recent[recent.length - 1].time - recent[0].time < 6 * 60000) return null;
+
+        const hours = recent.map(point => (point.time - latest) / 3600000);
+        const meanHours = hours.reduce((sum, value) => sum + value, 0) / hours.length;
+        const meanValue = recent.reduce((sum, point) => sum + point.value, 0) / recent.length;
+        let numerator = 0, denominator = 0;
+        recent.forEach((point, index) => {
+            numerator += (hours[index] - meanHours) * (point.value - meanValue);
+            denominator += (hours[index] - meanHours) ** 2;
+        });
+        return denominator > 0 ? numerator / denominator : null;
+    }
+
+    function updateRateInsight(valueId, detailId, rate, risingText, fallingText, stale = false) {
+        const valueElement = document.getElementById(valueId);
+        const detailElement = document.getElementById(detailId);
+        if (stale || rate === null || !Number.isFinite(rate)) {
+            valueElement.textContent = "-- °C/h";
+            detailElement.textContent = stale ? "Keine aktuellen Messwerte" : "Mindestens 3 Messungen in 30 Minuten nötig";
+            valueElement.style.color = "var(--text-secondary)";
+            return;
+        }
+        const rounded = Math.abs(rate) < 0.05 ? 0 : Math.round(rate * 10) / 10;
+        valueElement.textContent = `${rounded > 0 ? "+" : ""}${rounded.toFixed(1)} °C/h`;
+        detailElement.textContent = rounded > 0.1 ? risingText : rounded < -0.1 ? fallingText : "Weitgehend stabil · Trend der letzten 30 Minuten";
+        valueElement.style.color = rounded < -0.1 ? "#60a5fa" : rounded > 0.1 ? "#f97316" : "var(--text-primary)";
+    }
+
+    function updateTrend(elementId, current, previous) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        if (previous === undefined || previous === null || Math.abs(current - previous) < 0.1) {
+            el.textContent = "\u2194"; el.style.color = "#94a3b8";
+        } else if (current > previous) {
+            el.textContent = "\u25B2"; el.style.color = "#ef4444";
+        } else {
+            el.textContent = "\u25BC"; el.style.color = "#10b981";
+        }
+    }
+
+    function updateHumidityTrend(elementId, current, previous) {
+        const el = document.getElementById(elementId);
+        if (!el) return;
+        const delta = current - previous;
+        if (previous === undefined || previous === null || Math.abs(delta) < 0.5) {
+            el.textContent = "\u2192";
+            el.style.color = "#94a3b8";
+            el.title = "Feuchtigkeit stabil";
+        } else if (delta > 0) {
+            el.textContent = "\u2191";
+            el.style.color = "#3b82f6";
+            el.title = "Feuchtigkeit steigt";
+        } else {
+            el.textContent = "\u2193";
+            el.style.color = "#f59e0b";
+            el.title = "Feuchtigkeit fällt";
+        }
+    }
+    function updateStatusIndicator() {
+        const dot = document.getElementById('statusDot');
+        const txt = document.getElementById('statusText');
+        const ageText = document.getElementById('dataAge');
+        const now = Date.now();
+        const ageMs = newestMeasurementTimestamp > 0 ? Math.max(0, now - newestMeasurementTimestamp) : null;
+        if (ageMs !== null) {
+            const ageSeconds = Math.floor(ageMs / 1000);
+            ageText.textContent = ageSeconds < 60 ? `Messung vor ${ageSeconds} s` : `Messung vor ${Math.floor(ageSeconds / 60)} min`;
+        } else {
+            ageText.textContent = 'Keine Messung';
+        }
+        const isStale = ageMs === null || ageMs >= LIVE_THRESHOLD_MS;
+        document.querySelectorAll('.card, .chart-note').forEach(el => el.classList.toggle('stale', isStale));
+        if (ageMs !== null && ageMs < LIVE_THRESHOLD_MS) {
+            dot.classList.add('online');
+            txt.textContent = "LIVE";
+            txt.style.color = "#22c55e";
+        } else {
+            dot.classList.remove('online');
+            txt.textContent = "OFFLINE";
+            txt.style.color = "#ef4444";
+        }
+    }
+
+    async function loadSessions() {
+        try {
+            const r = await fetch(`${dbUrl}Datenlogger.json?shallow=true`);
+            const s = await r.json();
+            if (!s) return;
+            const sel = document.getElementById('sessionSelect');
+            const currentVal = sel.value;
+            const keys = Object.keys(s).sort().reverse();
+            sel.innerHTML = "";
+            keys.forEach(k => { 
+                const opt = document.createElement('option');
+                opt.value = k; opt.textContent = k;
+                sel.appendChild(opt); 
+            });
+            if (currentVal && keys.includes(currentVal)) sel.value = currentVal;
+            else sel.selectedIndex = 0;
+        } catch (e) { console.error(e); }
+    }
+
+    async function deleteSelectedSession() {
+        const sel = document.getElementById('sessionSelect');
+        const session = sel.value;
+        if (!session) return;
+        const confirmed = confirm(
+            'Session ' + session + ' wirklich löschen?\n\nAlle Messwerte dieser Session werden dauerhaft aus Firebase gelöscht.'
+        );
+        if (!confirmed) return;
+        try {
+            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Firebase HTTP ' + response.status);
+            await loadSessions();
+            await updateData();
+            alert('Session wurde gelöscht.');
+        } catch (e) {
+            console.error(e);
+            alert('Die Session konnte nicht gelöscht werden. Prüfe die Firebase-Regeln.');
+        }
+    }
+    async function updateData() {
+        const limit = document.getElementById('limitSelect').value;
+        const session = document.getElementById('sessionSelect').value;
+        if (!session) {
+            newestMeasurementTimestamp = 0;
+            updateStatusIndicator();
+            return;
+        }
+        try {
+            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=${limit}`);
+            const data = await response.json();
+            if (!data) {
+                newestMeasurementTimestamp = 0;
+                updateStatusIndicator();
+                return;
+            }
+
+            const keys = Object.keys(data).sort();
+            const labels = [], temps = [], hums = [], volts = [], dews = [], absHums = [], timestamps = [];
+            const showDate = parseInt(limit, 10) >= 480;
+            const sessionMatch = session.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})$/);
+            const sessionDate = sessionMatch ? `${sessionMatch[3]}.${sessionMatch[2]}.${sessionMatch[1]}` : '';
+            
+            keys.forEach(k => {
+                const entry = data[k];
+                if (entry && typeof entry === 'object') {
+                    const t = parseFloat(entry.t ?? 0);
+                    const h = parseFloat(entry.h ?? 0);
+                    const v = parseFloat(entry.v ?? 0);
+                    const ts = String(entry.ts || k);
+                    const timeLabel = ts.split(' ').pop();
+                    const pushTime = getFirebasePushTime(k);
+                    const rowDate = pushTime ? new Date(pushTime) : (sessionMatch ? new Date(Number(sessionMatch[1]), Number(sessionMatch[2]) - 1, Number(sessionMatch[3])) : null);
+                    const labelDate = rowDate ? `${String(rowDate.getDate()).padStart(2, '0')}.${String(rowDate.getMonth() + 1).padStart(2, '0')}.${rowDate.getFullYear()}` : sessionDate;
+                    const measurementTime = pushTime || (rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)
+                        ? new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate(), Number(ts.slice(0, 2)), Number(ts.slice(3, 5)), Number(ts.slice(6, 8))).getTime()
+                        : null);
+                    if (measurementTime) newestMeasurementTimestamp = measurementTime;
+                    labels.push(showDate && labelDate ? labelDate + ' ' + timeLabel : timeLabel);
+                    temps.push(t); hums.push(h); volts.push(v);
+                    dews.push(calcDewPoint(t, h));
+                    absHums.push(calcAbsHum(t, h));
+                    timestamps.push(Number.isFinite(measurementTime) ? measurementTime : null);
+                }
+            });
+
+            if (temps.length > 0) {
+                const idx = temps.length - 1;
+                const prevIdx = Math.max(0, temps.length - 2);
+                
+                const curT = temps[idx];
+                const curH = hums[idx];
+                const curDP = dews[idx];
+                const curV = volts[idx];
+
+                document.getElementById('currTemp').textContent = curT.toFixed(1);
+                document.getElementById('currTemp').style.color = getTempColor(curT);
+
+                document.getElementById('currHum').textContent = curH.toFixed(0);
+                document.getElementById('currHum').style.color = getHumColor(curH);
+
+                document.getElementById('currDew').textContent = curDP.toFixed(1);
+                document.getElementById('currDew').style.color = getTempColor(curDP);
+                document.getElementById('currDewGap').textContent = (curT - curDP).toFixed(1);
+
+                document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
+                document.getElementById('currAbs').style.color = '#64748b';
+                
+                const voltEl = document.getElementById('currVolt');
+                const batEl = document.getElementById('batLevel');
+                const vColor = getVoltColor(curV);
+                
+                voltEl.textContent = curV.toFixed(2) + " V";
+                voltEl.style.color = vColor;
+                
+                let batPct = Math.max(0, Math.min(100, (curV - 3.4) / (4.2 - 3.4) * 100));
+                batEl.style.width = batPct + "%";
+                batEl.style.backgroundColor = vColor;
+                document.getElementById('batteryPercent').textContent = "ca. " + Math.round(batPct) + "%";
+                document.getElementById('batteryPercent').title = "Grobe Spannungsanzeige zwischen 3,4 V und 4,2 V; keine genaue Ladezustandsmessung";
+
+                updateTrend('tempTrend', temps[idx], temps[prevIdx]);
+                updateHumidityTrend('humTrend', hums[idx], hums[prevIdx]);
+                updateTrend('dewTrend', dews[idx], dews[prevIdx]);
+                updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
+
+                const trendStale = !newestMeasurementTimestamp || (Date.now() - newestMeasurementTimestamp) >= LIVE_THRESHOLD_MS;
+                updateRateInsight('dewRateValue', 'dewRateDetail', calcRatePerHour(dews, timestamps), 'Taupunkt steigt · Taupunkttrend der letzten 30 Minuten', 'Taupunkt fällt · Taupunkttrend der letzten 30 Minuten', trendStale);
+                updateRateInsight('coolingRateValue', 'coolingRateDetail', calcRatePerHour(temps, timestamps), 'Temperatur steigt · Temperaturtrend der letzten 30 Minuten', 'Temperatur fällt · Abkühlung der letzten 30 Minuten', trendStale);
+                chart.data.labels = labels;
+                chart.data.datasets[0].data = temps;
+                chart.data.datasets[1].data = hums;
+                chart.data.datasets[2].data = dews;
+                chart.dewValues = dews;
+                const hasRiskZone = temps.some((t, i) => { const gap = t - dews[i]; return Number.isFinite(gap) && gap >= 0 && gap <= 1.5; });
+                document.getElementById('chartNote').style.display = hasRiskZone ? 'block' : 'none';
+                
+                const minH = Math.min(...hums);
+                const maxH = Math.max(...hums);
+                const humidityPadding = Math.max(3, (maxH - minH) * 0.15);
+                let humidityAxisMin = Math.max(0, Math.floor(minH - humidityPadding));
+                let humidityAxisMax = Math.min(100, Math.ceil(maxH + humidityPadding));
+                if (humidityAxisMax - humidityAxisMin < 10) {
+                    humidityAxisMin = Math.max(0, Math.min(90, Math.floor((minH + maxH) / 2 - 5)));
+                    humidityAxisMax = humidityAxisMin + 10;
+                }
+                chart.options.scales.y1.min = humidityAxisMin;
+                chart.options.scales.y1.max = humidityAxisMax;
+
+                const minT = Math.min(...temps);
+                const maxT = Math.max(...temps);
+                chart.options.scales.y.min = Math.min(minT, Math.min(...dews)) - 1;
+                chart.options.scales.y.max = maxT + 1;
+                chart.options.plugins.annotation.annotations.minLine.value = minT;
+                chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
+                chart.options.plugins.annotation.annotations.maxLine.value = maxT;
+                chart.options.plugins.annotation.annotations.maxLine.label.content = 'Max: ' + maxT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
+                
+                chart.update('none');
+                const delta = curT - curDP;
+                const dpCard = document.getElementById('dewPointCard');
+                const dewWarning = document.getElementById('dewWarning');
+                const frostWarning = document.getElementById('frostWarning');
+                const tCard = document.getElementById('tempCard');
+                if (curT <= FROST_WARN_TEMP) {
+                    tCard.style.borderColor = "#ef4444";
+                    tCard.style.background = "#450a0a";
+                    frostWarning.textContent = curT <= 0 ? "Frost · Temperatur " + curT.toFixed(1) + " °C" : "Frostwarnung · nur noch " + curT.toFixed(1) + " °C";
+                    frostWarning.style.display = "block";
+                } else {
+                    tCard.style.borderColor = "var(--card-border)";
+                    tCard.style.background = "var(--card-bg)";
+                    frostWarning.style.display = "none";
+                }
+                if (curT <= FROST_WARN_TEMP && curDP <= 0 && delta <= 1.5) {
+                    dpCard.style.borderColor = "#ef4444";
+                    dpCard.style.background = "#450a0a";
+                    dewWarning.textContent = "Reifgefahr · Taupunkt unter 0 °C (Abstand " + delta.toFixed(1) + " °C)";
+                    dewWarning.style.display = "block";
+                    dewWarning.style.color = "#fca5a5";
+                } else if (delta <= 1.0) {
+                    dpCard.style.borderColor = "#ef4444";
+                    dpCard.style.background = "#450a0a";
+                    dewWarning.textContent = "Nebel möglich · Tau- oder Beschlaggefahr (Abstand " + delta.toFixed(1) + " °C)";
+                    dewWarning.style.display = "block";
+                    dewWarning.style.color = "#fca5a5";
+                } else if (delta <= 1.5) {
+                    dpCard.style.borderColor = "#f97316";
+                    dpCard.style.background = "#431407";
+                    dewWarning.textContent = "Warnung: Abstand zum Taupunkt nur " + delta.toFixed(1) + " °C";
+                    dewWarning.style.display = "block";
+                    dewWarning.style.color = "#fdba74";
+                } else {
+                    dpCard.style.borderColor = "var(--card-border)";
+                    dpCard.style.background = "var(--card-bg)";
+                    dewWarning.style.display = "none";
+                }
+                updateStatusIndicator();
+            }
+        } catch (e) {
+            console.error(e);
+            if (!newestMeasurementTimestamp) {
+                document.getElementById('statusText').textContent = "FEHLER";
+                document.getElementById('statusText').style.color = "#f97316";
+                document.getElementById('dataAge').textContent = "Datenabruf fehlgeschlagen";
+            }
+        }
+    }
+
+    async function init() {
+        await loadSessions();
+        await updateData();
+        setInterval(loadSessions, 60000); 
+        setInterval(updateData, 30000);
+        setInterval(updateStatusIndicator, 5000);
+    }
+    window.onload = init;
+</script>
+</body>
+</html>
