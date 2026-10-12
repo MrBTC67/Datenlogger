@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -7,36 +7,40 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Gleiche Oberfläche wie die Wetterstation: dunkel, ruhige Karten, dezente Linien. */
         :root {
-            --bg-main: #0f172a;       
-            --card-bg: #1e293b;       
-            --chart-bg: #1e293b;
-            --card-border: #334155;   
-            --text-primary: #f8fafc;  
-            --text-secondary: #94a3b8;
-            --accent-volt-bg: #0f172a;
-            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.5), 0 2px 4px -2px rgb(0 0 0 / 0.5);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.5);
+            --bg-main: #0b1117;
+            --surface-2: #0f1720;
+            --card-bg: #121b24;
+            --chart-bg: #121b24;
+            --card-border: #1f2d3a;
+            --border-hover: #2c4153;
+            --text-primary: #e6edf3;
+            --text-secondary: #8a9aab;
+            --accent-volt-bg: #0f1720;
+            --color-accent: #4dd0e1;
+            --shadow: none;
+            --shadow-lg: none;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-        body { 
-            font-family: 'Inter', sans-serif; 
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-main);
-            color: var(--text-primary); 
-            margin: 0; 
-            padding: 15px; 
+            color: var(--text-primary);
+            line-height: 1.45;
+            margin: 0;
+            padding: 16px;
             display: flex;
             justify-content: center;
             min-height: 100vh;
         }
 
-        .container { 
+        .container {
             width: 100%;
-            max-width: 1200px; 
+            max-width: 1080px;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 12px;
@@ -47,16 +51,14 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 5px 0 15px 0;
-            border-bottom: 2px solid var(--card-border);
+            padding: 6px 0 14px 0;
         }
 
-        header h1 { 
-            margin: 0; 
-            font-size: 1.1rem; 
-            font-weight: 700; 
-            text-transform: uppercase;
-            letter-spacing: -0.2px;
+        header h1 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0;
         }
 
         .header-left {
@@ -86,12 +88,13 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 0.7rem;
-            font-weight: 800;
-            background: var(--card-bg);
-            padding: 6px 12px;
-            border-radius: 50px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            background: transparent;
+            padding: 5px 12px;
+            border-radius: 999px;
             border: 1px solid var(--card-border);
+            color: var(--text-secondary);
         }
 
         .status-copy { display: flex; flex-direction: column; gap: 2px; }
@@ -112,66 +115,92 @@
 
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
 
-        .card { 
-            background: var(--card-bg); 
-            padding: 15px; 
-            border-radius: 20px; 
+        .card {
+            background: var(--card-bg);
+            padding: 16px 18px;
+            border-radius: 18px;
             border: 1px solid var(--card-border);
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             box-shadow: var(--shadow);
-            transition: border-color 0.3s ease, background 0.3s ease, opacity 0.3s ease;
+            transition: border-color 0.2s ease, opacity 0.3s ease;
         }
+        .card:hover { border-color: var(--border-hover); }
         .card.stale { opacity: 0.4; }
         .card.stale .dew-warning, .chart-note.stale { display: none !important; }
 
-        .card h3 { 
-            margin: 0; 
-            font-size: 0.65rem; 
-            text-transform: uppercase; 
-            letter-spacing: 0.05em; 
+        .card h3 {
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0;
+            text-transform: none;
             color: var(--text-secondary);
+        }
+
+        .card-icon {
+            width: 18px;
+            height: 18px;
+            flex: none;
+            stroke: var(--color-accent);
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
         .val-row {
             display: flex;
             align-items: baseline;
             gap: 4px;
+            margin-top: 4px;
         }
 
-        .val { font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 700; color: var(--text-primary); transition: color 0.3s ease; }
+        .val { font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 600; color: var(--text-primary); transition: color 0.3s ease; }
+        /* Temperatur als große Hauptzahl, wie auf der Wetterstation. */
+        #currTemp.val { font-size: clamp(2.6rem, 5vw, 3.4rem); font-weight: 300; line-height: 1; }
         .unit { font-size: 0.95rem; color: var(--text-secondary); font-weight: 500; }
-        .trend { font-size: 1.15rem; margin-left: auto; }
+        /* Trendpfeil direkt hinter der Zahl und Einheit, nicht ganz rechts in der Karte. */
+        .trend { font-size: 1.25rem; line-height: 1; margin-left: 4px; }
 
-        .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.72rem; font-weight: 700; }
-        .dew-gap-line { color: var(--text-secondary); font-size: 0.78rem; }
+        .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.75rem; font-weight: 700; }
+        .dew-gap-line { color: var(--text-secondary); font-size: 0.8rem; }
         .dew-gap-line strong { color: var(--text-primary); font-size: 0.9rem; }
-        .abs-label { font-size: 0.85rem; font-weight: 700; }
+        .abs-label { font-size: 0.9rem; font-weight: 700; }
         .gap-bar { position: relative; display: flex; height: 8px; margin: 6px 0 4px; }
         .gap-zone { height: 100%; }
         .gap-red { width: 20%; background: #b91c1c; border-radius: 4px 0 0 4px; }
         .gap-orange { width: 10%; background: #c2410c; }
         .gap-green { width: 70%; background: #166534; border-radius: 0 4px 4px 0; }
         .gap-marker { position: absolute; top: -3px; left: 0; width: 3px; height: 14px; background: #f8fafc; border-radius: 2px; transform: translateX(-50%); transition: left 0.5s ease; }
+        /* Beschriftung der Abstandsskala (0 bis 5 °C), passend zu den Zonen oben. */
+        .gap-scale { position: relative; height: 14px; margin-bottom: 2px; font-size: 0.68rem; color: var(--text-secondary); }
+        .gap-scale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
+        .gap-scale span:first-child { transform: none; }
+        .gap-scale span:last-child { transform: translateX(-100%); }
         .battery-runtime { color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; }
         .battery-runtime.low { color: #ef4444; font-weight: 800; }
 
+        /* Panels: Verlauf, Diagramm und Bedienung als Karten wie auf der Wetterstation. */
         .insights-panel {
             grid-column: span 4;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 20px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 18px 20px;
             box-shadow: var(--shadow);
         }
-        .insights-panel h2 { margin: 0 0 12px; font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
+        .insights-panel h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: 0; }
         .insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .insight-item { min-width: 0; padding: 13px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--bg-main); }
+        .insight-item { min-width: 0; padding: 14px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--surface-2); }
         .insight-wide { grid-column: 1 / -1; }
-        .insight-label { color: var(--text-secondary); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
-        .insight-value { margin-top: 7px; font-size: clamp(1.15rem, 2.4vw, 1.55rem); font-weight: 700; color: var(--text-primary); }
-        .insight-detail { margin-top: 5px; color: var(--text-secondary); font-size: 0.7rem; line-height: 1.4; }
+        .insight-label { color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; }
+        .insight-value { margin-top: 7px; font-size: clamp(1.15rem, 2.4vw, 1.55rem); font-weight: 600; color: var(--text-primary); }
+        .insight-detail { margin-top: 5px; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; }
 
         .delete-group {
             border: 1px solid rgba(239, 68, 68, 0.45);
@@ -182,79 +211,80 @@
             flex-direction: column;
             gap: 8px;
         }
-        .delete-group p { margin: 0; color: #fecaca; font-size: 0.78rem; line-height: 1.45; }
+        .delete-group p { margin: 0; color: #fecaca; font-size: 0.8rem; line-height: 1.45; }
         .danger-button {
             background: #7f1d1d;
             color: #fecaca;
             border: 1px solid #ef4444;
             padding: 11px 14px;
             border-radius: 10px;
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             font-weight: 700;
             cursor: pointer;
         }
         .danger-button:hover { background: #991b1b; }
         .danger-button:focus-visible, select:focus-visible { outline: 3px solid #fca5a5; outline-offset: 2px; }
-        .chart-wrapper { 
+        .chart-wrapper {
             grid-column: span 4;
-            background: var(--chart-bg); 
-            padding: 15px; 
-            border-radius: 24px; 
+            background: var(--chart-bg);
+            padding: 18px 20px;
+            border-radius: 18px;
             border: 1px solid var(--card-border);
             height: 390px;
             box-shadow: var(--shadow);
         }
         .chart-note {
             grid-column: span 4;
-            margin: -8px 4px 0;
+            margin: -6px 4px 0;
             color: #fdba74;
-            font-size: 0.82rem;
+            font-size: 0.85rem;
             font-weight: 600;
             text-align: center;
         }
 
-        .controls { 
+        .controls {
             grid-column: span 4;
-            display: flex; 
+            display: flex;
             flex-direction: column;
-            gap: 16px; 
+            gap: 16px;
             background: var(--card-bg);
-            padding: 20px;
-            border-radius: 24px;
+            padding: 18px 20px;
+            border-radius: 18px;
             border: 1px solid var(--card-border);
             box-shadow: var(--shadow-lg);
         }
 
-        .control-group { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        label { 
-            font-weight: 700; 
-            font-size: 0.7rem; 
-            color: var(--text-secondary); 
-            text-transform: uppercase;
+        label {
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
             padding-left: 4px;
         }
-        
-        select { 
-            background: var(--bg-main); 
-            color: var(--text-primary); 
-            border: 1px solid var(--card-border); 
-            padding: 14px 16px; 
-            border-radius: 12px; 
-            font-size: 15px; 
+
+        select {
+            background: var(--surface-2);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 15px;
             font-weight: 600;
             width: 100%;
             cursor: pointer;
             appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%238a9aab' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
             background-repeat: no-repeat;
             background-position: right 12px center;
             background-size: 18px;
         }
+        select:hover { border-color: var(--color-accent); }
 
         .volt-display {
             background: var(--accent-volt-bg);
@@ -264,7 +294,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
         }
 
         .battery-container {
@@ -299,7 +328,7 @@
             transition: width 0.5s ease, background-color 0.5s ease;
         }
 
-        #currVolt { font-weight: 800; font-size: 1.2rem; transition: color 0.3s ease; }
+        #currVolt { font-weight: 700; font-size: 1.2rem; transition: color 0.3s ease; }
         .battery-percent { min-width: 3.2em; color: var(--text-primary); font-size: 0.8rem; font-weight: 700; }
 
         @media (min-width: 801px) {
@@ -312,22 +341,23 @@
             header, .chart-wrapper, .chart-note, .controls, .insights-panel { grid-column: span 2; }
             header { flex-wrap: wrap; gap: 12px; }
             .header-left { flex-wrap: wrap; gap: 10px 16px; }
-            .chart-wrapper { height: 340px; padding: 12px; }
+            .chart-wrapper { height: 340px; padding: 14px; }
         }
 
         @media (max-width: 480px) {
             body { padding: 10px; }
             .container { gap: 8px; }
-            header h1 { font-size: 0.95rem; }
+            header h1 { font-size: 1.05rem; }
             .header-voltage { font-size: 0.72rem; }
-            .card { padding: 13px 11px; border-radius: 15px; }
+            .card { padding: 13px 12px; border-radius: 15px; }
             .val { font-size: 1.65rem; }
-            .card h3 { font-size: 0.68rem; }
-            .dew-warning { font-size: 0.66rem; }
+            .trend { font-size: 1.7rem; }
+            .card h3 { font-size: 0.75rem; }
+            .dew-warning { font-size: 0.7rem; }
             .chart-wrapper { height: 300px; }
             .controls { padding: 14px; gap: 13px; }
             .insight-grid { gap: 8px; }
-            .insights-panel { padding: 12px; }
+            .insights-panel { padding: 14px; }
         }
     </style>
 </head>
@@ -356,7 +386,7 @@
     </header>
 
     <div class="card" id="tempCard">
-        <h3>Temperatur</h3>
+        <h3><svg class="card-icon" viewBox="0 0 24 24"><path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z"/></svg>Temperatur</h3>
         <div class="val-row">
             <div id="currTemp" class="val">--</div>
             <div class="unit">&deg;C</div>
@@ -366,7 +396,7 @@
     </div>
 
     <div class="card" id="humCard">
-        <h3>Feuchte</h3>
+        <h3><svg class="card-icon" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L12 2 8.1 9.5C6.1 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/></svg>Feuchte</h3>
         <div class="val-row">
             <div id="currHum" class="val">--</div>
             <div class="unit">%</div>
@@ -375,22 +405,23 @@
     </div>
 
     <div id="dewPointCard" class="card">
-        <h3>Taupunkt</h3>
+        <h3><svg class="card-icon" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L12 2 8.1 9.5C6.1 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/></svg>Taupunkt</h3>
         <div class="val-row">
             <div id="currDew" class="val">--</div>
             <div class="unit">&deg;C</div>
             <div id="dewTrend" class="trend"></div>
         </div>
-        <div class="dew-gap-line">Abstand zur Lufttemperatur: <strong id="currDewGap">--</strong> °C</div>
+        <div class="dew-gap-line">Abstand zur Lufttemperatur: <strong id="currDewGap">--</strong>&nbsp;°C</div>
         <div class="gap-bar" title="Abstand Temperatur − Taupunkt: rot bis 1,0 °C, orange bis 1,5 °C, Skala bis 5 °C">
             <div class="gap-zone gap-red"></div><div class="gap-zone gap-orange"></div><div class="gap-zone gap-green"></div>
             <div id="gapMarker" class="gap-marker"></div>
         </div>
+        <div class="gap-scale" aria-hidden="true"><span style="left: 0%;">0</span><span style="left: 20%;">1</span><span style="left: 30%;">1,5</span><span style="left: 100%;">5 °C</span></div>
         <div id="dewWarning" class="dew-warning">Taugefahr - Optik könnte beschlagen</div>
     </div>
 
     <div class="card">
-        <h3>Abs. Feuchte</h3>
+        <h3><svg class="card-icon" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L12 2 8.1 9.5C6.1 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/></svg>Abs. Feuchte</h3>
         <div class="val-row">
             <div id="currAbs" class="val">--</div>
             <div class="unit">g/m&sup3;</div>
@@ -436,7 +467,7 @@
             <label for="sessionSelect">Aktive Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
         </div>
-        
+
         <div class="control-group">
             <label for="limitSelect">Zeitraum im Diagramm</label>
             <select id="limitSelect" onchange="updateData()">
@@ -915,6 +946,11 @@
                 updateHumidityTrend('humTrend', hums[idx], hums[prevIdx]);
                 updateTrend('dewTrend', dews[idx], dews[prevIdx]);
                 updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
+                // Pfeile in der Farbe der jeweiligen Zahl.
+                document.getElementById('tempTrend').style.color = document.getElementById('currTemp').style.color;
+                document.getElementById('humTrend').style.color = document.getElementById('currHum').style.color;
+                document.getElementById('dewTrend').style.color = document.getElementById('currDew').style.color;
+                document.getElementById('absTrend').style.color = document.getElementById('currAbs').style.color;
 
                 const trendStale = !newestMeasurementTimestamp || (Date.now() - newestMeasurementTimestamp) >= LIVE_THRESHOLD_MS;
                 const dewRate = calcRatePerHour(dews, timestamps);
