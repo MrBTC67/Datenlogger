@@ -649,6 +649,22 @@
         return (b * alpha) / (a - alpha);
     }
 
+    // Achsenbereich: Daten mit Rand versehen, auf "runde" Schrittweite (1, 2, 2,5, 5 × 10^n) ausrichten.
+    function autoScale(values, { minSpan, padFrac, ticks = 5, hardMin = -Infinity, hardMax = Infinity }) {
+        let lo = Math.min(...values), hi = Math.max(...values);
+        const pad = Math.max(hi - lo, minSpan) * padFrac;
+        lo -= pad; hi += pad;
+        if (hi - lo < minSpan) { const mid = (lo + hi) / 2; lo = mid - minSpan / 2; hi = mid + minSpan / 2; }
+        const raw = (hi - lo) / ticks;
+        const mag = 10 ** Math.floor(Math.log10(raw));
+        const step = [1, 2, 2.5, 5, 10].map(f => f * mag).find(s => s >= raw);
+        return {
+            min: Math.max(hardMin, Math.floor(lo / step) * step),
+            max: Math.min(hardMax, Math.ceil(hi / step) * step),
+            step
+        };
+    }
+
     function calcAbsHum(t, h) {
         return (6.112 * Math.exp((17.67 * t) / (t + 243.5)) * h * 2.1674) / (273.15 + t);
     }
@@ -966,22 +982,17 @@
                 chart.data.datasets[1].data = toPoints(hums);
                 chart.data.datasets[2].data = toPoints(dews);
                 chart.riskPoints = timestamps.map((time, i) => ({ time, temp: temps[i], dew: dews[i] })).filter(p => Number.isFinite(p.time));
-                const minH = Math.min(...hums);
-                const maxH = Math.max(...hums);
-                const humidityPadding = Math.max(3, (maxH - minH) * 0.15);
-                let humidityAxisMin = Math.max(0, Math.floor(minH - humidityPadding));
-                let humidityAxisMax = Math.min(100, Math.ceil(maxH + humidityPadding));
-                if (humidityAxisMax - humidityAxisMin < 10) {
-                    humidityAxisMin = Math.max(0, Math.min(90, Math.floor((minH + maxH) / 2 - 5)));
-                    humidityAxisMax = humidityAxisMin + 10;
-                }
-                chart.options.scales.y1.min = humidityAxisMin;
-                chart.options.scales.y1.max = humidityAxisMax;
+                const humAxis = autoScale(hums, { minSpan: 10, padFrac: 0.15, hardMin: 0, hardMax: 100 });
+                chart.options.scales.y1.min = humAxis.min;
+                chart.options.scales.y1.max = humAxis.max;
+                chart.options.scales.y1.ticks.stepSize = humAxis.step;
 
                 const minT = Math.min(...temps);
                 const maxT = Math.max(...temps);
-                chart.options.scales.y.min = Math.min(minT, Math.min(...dews)) - 1;
-                chart.options.scales.y.max = maxT + 1;
+                const tempAxis = autoScale(temps.concat(dews), { minSpan: 5, padFrac: 0.1 });
+                chart.options.scales.y.min = tempAxis.min;
+                chart.options.scales.y.max = tempAxis.max;
+                chart.options.scales.y.ticks.stepSize = tempAxis.step;
                 chart.options.plugins.annotation.annotations.minLine.value = minT;
                 chart.options.plugins.annotation.annotations.minLine.label.content = 'Min: ' + minT.toFixed(1) + '' + String.fromCharCode(176) + 'C';
                 chart.options.plugins.annotation.annotations.maxLine.value = maxT;
