@@ -546,6 +546,28 @@
         return '#6d28d9';
     }
 
+    // Stützstellen für die Temperaturlinie: Violett bei −10 °C, Rot ab 40 °C, dazwischen stufenlos gemischt.
+    const TEMP_LINE_STOPS = [[-10, '#7c3aed'], [0, '#3b82f6'], [10, '#10b981'], [20, '#eab308'], [30, '#f97316'], [40, '#ef4444']];
+
+    // Stützstellen für die Feuchtelinie: trocken gelb-orange, ab 100 % Indigo.
+    const HUM_LINE_STOPS = [[20, '#d97706'], [40, '#eab308'], [60, '#22c55e'], [75, '#06b6d4'], [90, '#3b82f6'], [100, '#818cf8']];
+
+    // Farbe zwischen den Stützstellen linear mischen (Werte außerhalb werden auf den Rand geklemmt).
+    function colorFromStops(stops, v) {
+        if (v <= stops[0][0]) return stops[0][1];
+        if (v >= stops[stops.length - 1][0]) return stops[stops.length - 1][1];
+        for (let i = 0; i < stops.length - 1; i++) {
+            const [v0, c0] = stops[i], [v1, c1] = stops[i + 1];
+            if (v <= v1) {
+                const f = (v - v0) / (v1 - v0);
+                const rgb0 = [1, 3, 5].map(k => parseInt(c0.slice(k, k + 2), 16));
+                const rgb1 = [1, 3, 5].map(k => parseInt(c1.slice(k, k + 2), 16));
+                const [r, g, b] = rgb0.map((c, j) => Math.round(c + (rgb1[j] - c) * f));
+                return `rgb(${r}, ${g}, ${b})`;
+            }
+        }
+    }
+
     function getHumColor(h) {
         if (h < 40) return '#d97706';
         if (h < 75) return '#22c55e';
@@ -572,34 +594,46 @@
                     pointRadius: 0,
                     borderWidth: 3.5,
                     spanGaps: GAP_BREAK_MS,
-                    borderColor: '#facc15',
-                    // Linie wie die Temperaturzahl: jedes Segment in der Farbe des Temperaturbereichs seines Startpunkts.
-                    segment: { borderColor: ctx => getTempColor(ctx.p0.parsed.y) },
-                    backgroundColor: 'transparent',
-                    fill: false
+                    // Linie als vertikaler Verlauf: jede Höhe hat die Farbe ihrer Temperatur, Übergänge sind fließend.
+                    borderColor: ({ chart }) => {
+                        const area = chart.chartArea, yScale = chart.scales.y;
+                        if (!area || !yScale) return '#9ca3af';
+                        const yHot = yScale.getPixelForValue(40), yCold = yScale.getPixelForValue(-10);
+                        const gradient = chart.ctx.createLinearGradient(0, yHot, 0, yCold);
+                        TEMP_LINE_STOPS.slice().reverse().forEach(([t, color]) => gradient.addColorStop((40 - t) / 50, color));
+                        return gradient;
+                    },
+                    // Fläche unter der Kurve: nach unten hin zunehmend blau (Verlauf erst bei gerendertem Chart).
+                    backgroundColor: ctx => {
+                        const area = ctx.chart.chartArea;
+                        if (!area) return 'rgba(59, 130, 246, 0.04)';
+                        const gradient = ctx.chart.ctx.createLinearGradient(0, area.top, 0, area.bottom);
+                        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.03)');
+                        gradient.addColorStop(1, 'rgba(59, 130, 246, 0.22)');
+                        return gradient;
+                    },
+                    fill: 'start'
                 },
                 { 
                     label: 'Feuchtigkeit', 
-                    borderColor: '#60a5fa',
-                    data: [], 
-                    yAxisID: 'y1', 
-                    tension: 0.35, 
+                    // Gestrichelt, damit sie sich von der durchgezogenen Temperaturlinie unterscheidet.
+                    // Farbe als vertikaler Verlauf nach Feuchte (trocken gelb-orange, feucht blau-violett).
+                    borderColor: ({ chart }) => {
+                        const area = chart.chartArea, yScale = chart.scales.y1;
+                        if (!area || !yScale) return '#60a5fa';
+                        const yWet = yScale.getPixelForValue(100), yDry = yScale.getPixelForValue(20);
+                        const gradient = chart.ctx.createLinearGradient(0, yWet, 0, yDry);
+                        HUM_LINE_STOPS.slice().reverse().forEach(([h, color]) => gradient.addColorStop((100 - h) / 80, color + '80')); // 80 hex = 50 % Deckkraft
+                        return gradient;
+                    },
+                    borderDash: [6, 4],
+                    data: [],
+                    yAxisID: 'y1',
+                    tension: 0.35,
                     pointRadius: 0,
                     borderWidth: 2.5,
                     spanGaps: GAP_BREAK_MS,
                     backgroundColor: 'rgba(59, 130, 246, 0.08)',
-                    fill: false
-                },
-                {
-                    label: 'Taupunkt',
-                    borderColor: '#94a3b8',
-                    data: [],
-                    yAxisID: 'y',
-                    tension: 0.35,
-                    pointRadius: 0,
-                    borderWidth: 1.5,
-                    spanGaps: GAP_BREAK_MS,
-                    backgroundColor: 'transparent',
                     fill: false
                 }
             ]
@@ -616,7 +650,7 @@
                 y1: { 
                     position: 'right', 
                     grid: { display: false }, 
-                    ticks: { color: '#3b82f6', font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
+                    ticks: { color: ctx => colorFromStops(HUM_LINE_STOPS, ctx.tick.value), font: { weight: '600', size: 10 }, callback: v => v.toFixed(0) + '%' }
                 },
                 x: {
                     type: 'time',
@@ -627,7 +661,8 @@
             },
             plugins: { 
                 tooltip: { enabled: false },
-                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#3b82f6' : item.datasetIndex === 2 ? '#94a3b8' : '#facc15'; return item; }) } },
+                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#cbd5e1' : '#9ca3af';
+                    if (item.datasetIndex === 1) item.lineDash = [6, 4]; return item; }) } },
                 annotation: { annotations: {
                     frostZone: { type: 'box', yMin: -40, yMax: 2, backgroundColor: 'rgba(96, 165, 250, 0.10)', borderWidth: 0 },
                     frostLine: { type: 'line', scaleID: 'y', value: 0, borderColor: 'rgba(147, 197, 253, 0.8)', borderWidth: 1.5, borderDash: [5, 4], label: { display: true, content: '0 °C Frost', position: 'center', backgroundColor: '#1e293b', color: '#93c5fd', font: { size: 9, weight: '700' } }},
@@ -980,7 +1015,6 @@
                 const toPoints = values => values.map((y, i) => ({ x: timestamps[i], y })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
                 chart.data.datasets[0].data = toPoints(temps);
                 chart.data.datasets[1].data = toPoints(hums);
-                chart.data.datasets[2].data = toPoints(dews);
                 chart.riskPoints = timestamps.map((time, i) => ({ time, temp: temps[i], dew: dews[i] })).filter(p => Number.isFinite(p.time));
                 const humAxis = autoScale(hums, { minSpan: 10, padFrac: 0.15, hardMin: 0, hardMax: 100 });
                 chart.options.scales.y1.min = humAxis.min;
