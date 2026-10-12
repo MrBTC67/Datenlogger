@@ -573,6 +573,8 @@
                     borderWidth: 3.5,
                     spanGaps: GAP_BREAK_MS,
                     borderColor: '#facc15',
+                    // Linie wie die Temperaturzahl: jedes Segment in der Farbe des Temperaturbereichs seines Startpunkts.
+                    segment: { borderColor: ctx => getTempColor(ctx.p0.parsed.y) },
                     backgroundColor: 'transparent',
                     fill: false
                 },
@@ -609,7 +611,7 @@
             scales: {
                 y: { 
                     grid: { color: 'rgba(255, 255, 255, 0.05)' }, 
-                    ticks: { color: '#d1d5db', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '' + String.fromCharCode(176) + 'C' }
+                    ticks: { color: '#94a3b8', font: { weight: '600', size: 10 }, callback: v => v.toFixed(1) + '' + String.fromCharCode(176) + 'C' }
                 },
                 y1: { 
                     position: 'right', 
