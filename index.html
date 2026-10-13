@@ -527,7 +527,41 @@
             ctx.restore();
         }
     };
-    Chart.register(dewRiskZones);
+    // Datenlücken (länger als GAP_BREAK_MS ohne Messung) grau schraffiert statt als leerer Streifen.
+    const dataGapHatch = {
+        id: 'dataGapHatch',
+        beforeDatasetsDraw(chart) {
+            const riskPoints = chart.riskPoints;
+            if (!riskPoints || riskPoints.length < 2 || !chart.chartArea || !chart.scales.x) return;
+            const { ctx, chartArea, scales } = chart;
+            const times = riskPoints.map(p => p.time).filter(Number.isFinite).sort((a, b) => a - b);
+            const height = chartArea.bottom - chartArea.top;
+            ctx.save();
+            for (let i = 1; i < times.length; i++) {
+                if (times[i] - times[i - 1] <= GAP_BREAK_MS) continue;
+                const x1 = scales.x.getPixelForValue(times[i - 1]);
+                const x2 = scales.x.getPixelForValue(times[i]);
+                if (!Number.isFinite(x1) || !Number.isFinite(x2) || x2 <= x1) continue;
+                ctx.beginPath();
+                ctx.rect(x1, chartArea.top, x2 - x1, height);
+                ctx.clip();
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.10)';
+                ctx.fillRect(x1, chartArea.top, x2 - x1, height);
+                ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let x = x1 - height; x < x2; x += 8) {
+                    ctx.moveTo(x, chartArea.bottom);
+                    ctx.lineTo(x + height, chartArea.top);
+                }
+                ctx.stroke();
+                ctx.restore();
+                ctx.save();
+            }
+            ctx.restore();
+        }
+    };
+    Chart.register(dewRiskZones, dataGapHatch);
 
     function getTempColor(t) {
         if (t >= 40) return '#ef4444';
