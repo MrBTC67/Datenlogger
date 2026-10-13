@@ -487,6 +487,28 @@
     const LIVE_THRESHOLD_MS = 6 * 60 * 1000;
     const FROST_WARN_TEMP = 2.0;
     const GAP_BREAK_MS = 10 * 60 * 1000; // Ab 10 Minuten ohne Messung bricht die Linie ab
+    const MEASUREMENT_STEP_MS = 3 * 60 * 1000; // Messintervall: 3 Minuten
+    const MAX_INTERPOLATED_GAP_MS = 60 * 60 * 1000; // Längere Ausfälle bleiben als Lücke sichtbar
+    // Linear interpolierte Zwischenpunkte für Datenlöcher bis MAX_INTERPOLATED_GAP_MS, damit Temperatur und Feuchte durchgezogen erscheinen.
+    function interpolateDataGaps(points) {
+        const sorted = [...points].sort((a, b) => a.x - b.x);
+        const out = [];
+        for (let i = 0; i < sorted.length; i++) {
+            if (i > 0) {
+                const a = sorted[i - 1], b = sorted[i];
+                const gap = b.x - a.x;
+                if (gap > MEASUREMENT_STEP_MS * 1.5 && gap <= MAX_INTERPOLATED_GAP_MS) {
+                    const steps = Math.round(gap / MEASUREMENT_STEP_MS);
+                    for (let k = 1; k < steps; k++) {
+                        const t = k / steps;
+                        out.push({ x: a.x + gap * t, y: a.y + (b.y - a.y) * t });
+                    }
+                }
+            }
+            out.push(sorted[i]);
+        }
+        return out;
+    }
     const dewRiskZones = {
         id: 'dewRiskZones',
         // Nach den Datensätzen zeichnen, damit die Warnfläche nicht von der blauen Füllung der Kurve überdeckt wird.
@@ -1097,7 +1119,7 @@
                 document.getElementById('absTrend').style.color = document.getElementById('currAbs').style.color;
 
 
-                const toPoints = values => values.map((y, i) => ({ x: timestamps[i], y })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y));
+                const toPoints = values => interpolateDataGaps(values.map((y, i) => ({ x: timestamps[i], y })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
                 chart.data.datasets[0].data = toPoints(temps);
                 chart.data.datasets[1].data = toPoints(hums);
                 chart.riskPoints = timestamps.map((time, i) => ({ time, temp: temps[i], dew: dews[i] })).filter(p => Number.isFinite(p.time));
