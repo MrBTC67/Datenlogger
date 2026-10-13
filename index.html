@@ -489,7 +489,8 @@
     const GAP_BREAK_MS = 10 * 60 * 1000; // Ab 10 Minuten ohne Messung bricht die Linie ab
     const dewRiskZones = {
         id: 'dewRiskZones',
-        beforeDatasetsDraw(chart) {
+        // Nach den Datensätzen zeichnen, damit die Warnfläche nicht von der blauen Füllung der Kurve überdeckt wird.
+        afterDatasetsDraw(chart) {
             const riskPoints = chart.riskPoints;
             if (!riskPoints || !chart.chartArea || !chart.scales.x) return;
             const { ctx, chartArea, scales } = chart;
