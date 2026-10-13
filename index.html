@@ -512,7 +512,8 @@
                     zoneColor = `rgba(186, 230, 253, ${frostAlpha.toFixed(3)})`;
                 } else if (gap <= 1) {
                     // Kritische Taupunktnähe: dezentes Rot, damit die Kurve sichtbar bleibt.
-                    const redAlpha = 0.12 + (0.10 * (1 - gap));
+                    // Volle Deckkraft, damit die rote Zone auf dem dunklen Hintergrund klar als Warnung erkennbar ist.
+                    const redAlpha = 1;
                     zoneColor = `rgba(239, 68, 68, ${redAlpha.toFixed(3)})`;
                 } else {
                     // Über 1 bis 1,5 °C: abgestuft von 16 % auf 8 % Deckkraft.
