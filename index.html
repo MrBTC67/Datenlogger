@@ -128,6 +128,7 @@
         }
         .card:hover { border-color: var(--border-hover); }
         .card.stale { opacity: 0.4; }
+        .abs-row .card.stale { opacity: 1; } /* Absolute Feuchte und Sättigung bleiben immer gut lesbar. */
         .card.stale .dew-warning, .chart-note.stale { display: none !important; }
 
         .card h3 {
@@ -976,7 +977,7 @@
 
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
-                document.getElementById('currAbs').style.color = '#64748b';
+                document.getElementById('currAbs').style.color = 'var(--text-primary)';
 
                 const absMax = calcAbsHum(curT, 100);
                 let absText, absColor;
