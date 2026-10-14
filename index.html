@@ -213,6 +213,8 @@
         }
         .gauge-digital { font-size: 1.4rem; font-weight: 400; color: var(--text-primary); line-height: 1; }
         .gauge-digital span { font-size: 0.8rem; color: var(--text-secondary); margin-left: 3px; font-weight: 500; }
+        .abs-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .abs-row .card { min-width: 0; }
         .range-bar { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; }
         .range-btn {
             flex: 1 1 0; max-width: 90px; padding: 7px 4px;
@@ -481,16 +483,22 @@
     <div id="chartNote" class="chart-note" style="display: none;">Nebel möglich, Tau-, Reif- und Beschlaggefahr</div>
 
 
-    <div class="card" style="grid-column: 1 / -1;">
-        <h3><svg class="card-icon" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L12 2 8.1 9.5C6.1 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/></svg>Abs. Feuchte</h3>
-        <div class="val-row">
-            <div id="currAbs" class="val">--</div>
-            <div class="unit">g/m&sup3;</div>
-            <div id="absTrend" class="trend"></div>
+    <section class="abs-row" aria-label="Absolute Feuchte">
+        <div class="card">
+            <h3><svg class="card-icon" viewBox="0 0 24 24"><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5L12 2 8.1 9.5C6.1 11.1 5 13 5 15a7 7 0 0 0 7 7Z"/></svg>Abs. Feuchte</h3>
+            <div class="val-row">
+                <div id="currAbs" class="val">--</div>
+                <div class="unit">g/m&sup3;</div>
+                <div id="absTrend" class="trend"></div>
+            </div>
+            <div id="absLabel" class="abs-label">--</div>
         </div>
-        <div id="absLabel" class="abs-label">--</div>
-        <div id="absDetail" class="dew-gap-line"></div>
-    </div>
+        <div class="card">
+            <h3>Sättigung</h3>
+            <div id="absDetail" class="dew-gap-line"></div>
+            <div id="absRange" class="dew-gap-line"></div>
+        </div>
+    </section>
 
 
     <div class="controls">
@@ -985,6 +993,13 @@
                 absLabelEl.style.color = absColor;
                 document.getElementById('absDetail').innerHTML = "<strong>" + curH.toFixed(0) + " %</strong> von max. " + absMax.toFixed(1) + " g/m³ bei " + curT.toFixed(1) + " °C";
                 
+                // Kleinster und größter Wert der absoluten Feuchte im angezeigten Zeitraum.
+                const absValid = absHums.filter(Number.isFinite);
+                const rangeName = document.querySelector('.range-btn.active')?.textContent || '';
+                document.getElementById('absRange').innerHTML = absValid.length
+                    ? "Zeitraum " + rangeName + ": <strong>" + Math.min(...absValid).toFixed(1) + "</strong> bis <strong>" + Math.max(...absValid).toFixed(1) + " g/m³</strong>"
+                    : '';
+
                 // Taupunkt und Abstand zur Lufttemperatur: Je kleiner der Abstand, desto näher ist Nebel (gleiche Stufen wie die Zonen im Diagramm).
                 const dewGap = curT - curDP;
                 let dewColor = '#94a3b8', dewHint = '';
@@ -1033,9 +1048,18 @@
                 batRuntime.classList.toggle('low', lowBattery);
                 batRuntime.title = "Grobe Schätzung aus dem Spannungsverlauf der letzten Stunden bis 3,4 V";
 
-                updateTrend('absTrend', absHums[idx], absHums[prevIdx]);
-                // Pfeile in der Farbe der jeweiligen Zahl.
-                document.getElementById('absTrend').style.color = document.getElementById('currAbs').style.color;
+                // Trend der absoluten Feuchte gegenüber dem Wert vor einer Stunde: steigend grün, fallend rot, seitwärts grau (bis 0,5 g/m³).
+                const absChange = trendChange(absHums, timestamps, idx);
+                const absTrendEl = document.getElementById('absTrend');
+                if (absChange === null || !Number.isFinite(absChange)) {
+                    absTrendEl.textContent = '';
+                } else if (absChange > 0.5) {
+                    absTrendEl.textContent = '↗'; absTrendEl.style.color = '#22c55e';
+                } else if (absChange < -0.5) {
+                    absTrendEl.textContent = '↘'; absTrendEl.style.color = '#ef4444';
+                } else {
+                    absTrendEl.textContent = '→'; absTrendEl.style.color = '#94a3b8';
+                }
 
 
                 const toPoints = values => interpolateDataGaps(values.map((y, i) => ({ x: timestamps[i], y })).filter(p => Number.isFinite(p.x) && Number.isFinite(p.y)));
