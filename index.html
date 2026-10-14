@@ -184,7 +184,7 @@
         .battery-runtime { color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; }
         .battery-runtime.low { color: #ef4444; font-weight: 800; }
 
-        /* Analoganzeigen für Temperatur und Feuchte (Design aus analog_test.html). */
+        /* Aktuelle Werte für Temperatur und Feuchte. */
         .gauge-row {
             grid-column: 1 / -1;
             display: grid;
@@ -211,9 +211,21 @@
             font-weight: 600;
             color: var(--text-secondary);
         }
-        .gauge-card svg { width: 100%; max-width: 150px; height: auto; display: block; }
         .gauge-digital { font-size: 1.4rem; font-weight: 400; color: var(--text-primary); line-height: 1; }
         .gauge-digital span { font-size: 0.8rem; color: var(--text-secondary); margin-left: 3px; font-weight: 500; }
+        .range-bar { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; }
+        .range-btn {
+            flex: 1 1 0; max-width: 90px; padding: 7px 4px;
+            background: var(--card-bg); color: var(--text-secondary);
+            border: 1px solid var(--card-border); border-radius: 10px;
+            font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+        }
+        .range-btn.active { color: var(--text-primary); border-color: #60a5fa; background: rgba(96, 165, 250, 0.16); }
+        .gap-hint { font-size: 0.7rem; font-weight: 600; min-height: 1em; line-height: 1; margin-top: -4px; }
+        .gauge-reading { display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .trend-arrow { font-size: 1.2rem; font-weight: 800; line-height: 1; color: #94a3b8; }
+        .trend-arrow.up { color: #22c55e; }
+        .trend-arrow.down { color: #ef4444; }
         @media (max-width: 480px) {
             .gauge-card { padding: 12px 8px 14px; border-radius: 20px; }
         }
@@ -418,18 +430,50 @@
         </div>
     </header>
 
-    <section class="gauge-row" aria-label="Analoganzeigen">
+    <section class="gauge-row" aria-label="Aktuelle Werte">
         <div class="gauge-card">
             <h3>Temperatur</h3>
-            <div id="gaugeTemp"></div>
-            <div id="digitalTemp" class="gauge-digital">--<span>°C</span></div>
+            <div class="gauge-reading">
+                <div id="digitalTemp" class="gauge-digital">--<span>°C</span></div>
+                <span id="trendTemp" class="trend-arrow" aria-label="Trend Temperatur"></span>
+            </div>
         </div>
         <div class="gauge-card">
             <h3>Feuchte</h3>
-            <div id="gaugeHum"></div>
-            <div id="digitalHum" class="gauge-digital">--<span>%</span></div>
+            <div class="gauge-reading">
+                <div id="digitalHum" class="gauge-digital">--<span>%</span></div>
+                <span id="trendHum" class="trend-arrow" aria-label="Trend Feuchte"></span>
+            </div>
+        </div>
+        <div class="gauge-card">
+            <h3>Taupunkt</h3>
+            <div class="gauge-reading">
+                <div id="digitalDew" class="gauge-digital">--<span>°C</span></div>
+            </div>
+        </div>
+        <div class="gauge-card">
+            <h3>Abstand zum Taupunkt</h3>
+            <div class="gauge-reading">
+                <div id="digitalGap" class="gauge-digital">--<span>°C</span></div>
+            </div>
+            <div id="gapHint" class="gap-hint"></div>
         </div>
     </section>
+
+    <div class="range-bar" role="group" aria-label="Zeitraum im Diagramm">
+        <button type="button" class="range-btn" data-limit="20">1 Std</button>
+        <button type="button" class="range-btn active" data-limit="80">4 Std</button>
+        <button type="button" class="range-btn" data-limit="240">12 Std</button>
+        <button type="button" class="range-btn" data-limit="480">24 Std</button>
+        <button type="button" class="range-btn" data-limit="10000">Session</button>
+        <select id="limitSelect" hidden onchange="updateData()">
+            <option value="20">Letzte 60 Minuten</option>
+            <option value="80" selected>Letzte 4 Stunden</option>
+            <option value="240">Letzte 12 Stunden</option>
+            <option value="480">Letzte 24 Stunden</option>
+            <option value="10000">Ganze Session</option>
+        </select>
+    </div>
 
     <div class="chart-wrapper">
         <canvas id="astroChart"></canvas>
@@ -458,17 +502,6 @@
         <div class="control-group">
             <label for="sessionSelect">Aktive Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
-        </div>
-
-        <div class="control-group">
-            <label for="limitSelect">Zeitraum im Diagramm</label>
-            <select id="limitSelect" onchange="updateData()">
-                <option value="20">Letzte 60 Minuten</option>
-                <option value="80" selected>Letzte 4 Stunden</option>
-                <option value="240">Letzte 12 Stunden</option>
-                <option value="480">Letzte 24 Stunden</option>
-                <option value="10000">Ganze Session</option>
-            </select>
         </div>
 
         <div class="delete-group">
@@ -693,172 +726,41 @@
         }
     });
 
-    // --- Analoganzeigen (Temperatur und Feuchte) ---
-    const SVG_NS = 'http://www.w3.org/2000/svg';
-    const SWEEP = 240;   // Skalenbogen in Grad, symmetrisch um die 12-Uhr-Stellung
-    const CX = 150, CY = 150, R_OUT = 120;
-
-    // Farbschema je Anzeige: Zifferblatt, Zeiger und Achsenkappe
-    const THEMES = {
-        temp: {
-            // Silber metallisch mit Glanzband
-            dial: [['0', '#f8fafc'], ['0.3', '#e2e8f0'], ['0.7', '#94a3b8'], ['1', '#cbd5e1']],
-            needle: [['0', '#7f1d1d'], ['0.5', '#f87171'], ['1', '#b91c1c']],
-            needleStroke: '#7f1d1d',
-            hub: [['0', '#fecaca'], ['0.5', '#dc2626'], ['1', '#7f1d1d']],
-            hubStroke: '#7f1d1d',
-            sheen: true
-        },
-        // Hellblau metallisch mit Glanzband, goldener Zeiger
-        hum: {
-            dial: [['0', '#f0f9ff'], ['0.35', '#bae6fd'], ['0.75', '#7dd3fc'], ['1', '#38bdf8']],
-            needle: [['0', '#78350f'], ['0.35', '#fde68a'], ['0.6', '#d4a017'], ['1', '#92400e']],
-            needleStroke: '#78350f',
-            hub: [['0', '#fef9c3'], ['0.5', '#d4a017'], ['1', '#713f12']],
-            hubStroke: '#713f12',
-            sheen: true
+    // --- Aktuelle Werte für Temperatur und Feuchte (Zahlenanzeige) ---
+    // Zahl in derselben Farbe wie die Kurve an dieser Stelle (gleiche Farbstufen wie Temperatur- und Feuchtelinie).
+    // Trendpfeil: Änderung gegenüber dem Wert vor einer Stunde. Fallend rot, steigend grün, seitwärts grau.
+    const TREND_WINDOW_MS = 60 * 60 * 1000;
+    const setReadout = (id, trendId, decimals, stops, flatBand) => ({
+        set(value, change) {
+            const el = document.getElementById(id);
+            el.firstChild.textContent = value.toFixed(decimals);
+            el.style.color = colorFromStops(stops, value);
+            const arrow = document.getElementById(trendId);
+            if (change === null || !Number.isFinite(change)) { arrow.textContent = ''; arrow.className = 'trend-arrow'; return; }
+            const dir = change > flatBand ? 'up' : change < -flatBand ? 'down' : 'flat';
+            arrow.textContent = dir === 'up' ? '↗' : dir === 'down' ? '↘' : '→';
+            arrow.className = 'trend-arrow ' + dir;
         }
-    };
+    });
+    const tempGauge = setReadout('digitalTemp', 'trendTemp', 1, TEMP_LINE_STOPS, 0.5);
+    const humGauge = setReadout('digitalHum', 'trendHum', 0, HUM_LINE_STOPS, 3);
 
-    function stops(list) {
-        return list.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('');
-    }
-
-    function buildDefs(p, theme) {
-        const t = THEMES[theme];
-        return `
-        <defs>
-            <linearGradient id="${p}bezel" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#f8fafc"/>
-                <stop offset="0.45" stop-color="#94a3b8"/>
-                <stop offset="0.7" stop-color="#475569"/>
-                <stop offset="1" stop-color="#e2e8f0"/>
-            </linearGradient>
-            <radialGradient id="${p}dial" cx="0.42" cy="0.36" r="0.75">
-                ${stops(t.dial)}
-            </radialGradient>
-            <linearGradient id="${p}sheen" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-                <stop offset="0.38" stop-color="#ffffff" stop-opacity="0"/>
-                <stop offset="0.48" stop-color="#ffffff" stop-opacity="0.45"/>
-                <stop offset="0.56" stop-color="#ffffff" stop-opacity="0"/>
-                <stop offset="0.8" stop-color="#ffffff" stop-opacity="0.25"/>
-                <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="${p}glass" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#ffffff" stop-opacity="0.55"/>
-                <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
-            </linearGradient>
-            <linearGradient id="${p}needleGrad" x1="0" y1="0" x2="1" y2="0">
-                ${stops(t.needle)}
-            </linearGradient>
-            <radialGradient id="${p}hub" cx="0.35" cy="0.3" r="0.8">
-                ${stops(t.hub)}
-            </radialGradient>
-            <filter id="${p}shadow" x="-20%" y="-20%" width="140%" height="150%">
-                <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.55"/>
-            </filter>
-            <filter id="${p}needleShadow" x="-50%" y="-50%" width="200%" height="200%">
-                <feDropShadow dx="2" dy="4" stdDeviation="2.5" flood-color="#000" flood-opacity="0.45"/>
-            </filter>
-        </defs>`;
-    }
-
-    // Erzeugt eine runde 3D-Analoganzeige in den Container.
-    // cfg: min, max, majorStep (beschriftet), minorStep (kurze Striche), unit, decimals, theme, zones, label
-    function createGauge(containerId, cfg) {
-        const p = containerId + '_';
-        const span = cfg.max - cfg.min;
-        const angleFor = v => -SWEEP / 2 + ((v - cfg.min) / span) * SWEEP;
-        const polar = (r, deg) => {
-            const rad = deg * Math.PI / 180;
-            return { x: CX + r * Math.sin(rad), y: CY - r * Math.cos(rad) };
-        };
-
-        // Farbige Bereiche als halbtransparente Ringsektoren (zwischen Zifferblatt und Skala)
-        const sectorPath = (r1, r2, a1, a2) => {
-            const o1 = polar(r2, a1), o2 = polar(r2, a2), i1 = polar(r1, a1), i2 = polar(r1, a2);
-            return `M${o1.x} ${o1.y} A${r2} ${r2} 0 0 1 ${o2.x} ${o2.y} L${i2.x} ${i2.y} A${r1} ${r1} 0 0 0 ${i1.x} ${i1.y} Z`;
-        };
-        const zonesSvg = (cfg.zones || []).map(z =>
-            `<path d="${sectorPath(100, 134, angleFor(z.from), angleFor(z.to))}" fill="${z.color}" fill-opacity="0.5"/>`
-        ).join('');
-
-        const wrap = document.getElementById(containerId);
-        wrap.innerHTML = `
-        <svg viewBox="0 0 300 300" role="img" aria-label="${cfg.label}">
-            ${buildDefs(p, cfg.theme)}
-            <circle cx="150" cy="150" r="142" fill="url(#${p}bezel)" filter="url(#${p}shadow)"/>
-            <circle cx="150" cy="150" r="136" fill="url(#${p}dial)"/>
-            ${THEMES[cfg.theme].sheen ? `<circle cx="150" cy="150" r="136" fill="url(#${p}sheen)"/>` : ''}
-            ${zonesSvg}
-            <circle cx="150" cy="150" r="136" fill="none" stroke="#64748b" stroke-width="2" opacity="0.6"/>
-            <circle cx="150" cy="150" r="133" fill="none" stroke="#ffffff" stroke-width="1.5" opacity="0.7"/>
-            <g class="ticks" stroke-linecap="round"></g>
-            <g class="labels"></g>
-            <ellipse cx="150" cy="92" rx="110" ry="58" fill="url(#${p}glass)" opacity="0.7"/>
-            <text x="150" y="212" text-anchor="middle" font-size="16" font-weight="700" fill="#475569">${cfg.unit}</text>
-            <g class="needle" filter="url(#${p}needleShadow)">
-                <path d="M145.5 150 L148.6 58 Q150 47 151.4 58 L154.5 150 Z" fill="url(#${p}needleGrad)" stroke="${THEMES[cfg.theme].needleStroke}" stroke-width="0.6" stroke-linejoin="round"/>
-            </g>
-            <circle cx="150" cy="150" r="9" fill="url(#${p}hub)" stroke="${THEMES[cfg.theme].hubStroke}" stroke-width="0.8"/>
-            <circle cx="147.5" cy="147.5" r="2.5" fill="#ffffff" opacity="0.8"/>
-        </svg>`;
-
-        const ticksG = wrap.querySelector('.ticks');
-        const labelsG = wrap.querySelector('.labels');
-        const needle = wrap.querySelector('.needle');
-
-        // Kurze Striche alle minorStep, lange Striche und Zahlen alle majorStep.
-        // Rundung verhindert Gleitkomma-Fehler bei Schrittweiten wie 0,1.
-        const steps = Math.round(span / cfg.minorStep);
-        for (let i = 0; i <= steps; i++) {
-            const v = +(cfg.min + i * cfg.minorStep).toFixed(3);
-            const major = Math.abs(v / cfg.majorStep - Math.round(v / cfg.majorStep)) < 1e-6;
-            const a = angleFor(v);
-            const p1 = polar(R_OUT, a);
-            const p2 = polar(R_OUT - (major ? 18 : 9), a);
-            const line = document.createElementNS(SVG_NS, 'line');
-            line.setAttribute('x1', p1.x); line.setAttribute('y1', p1.y);
-            line.setAttribute('x2', p2.x); line.setAttribute('y2', p2.y);
-            line.setAttribute('stroke', major ? '#0f172a' : '#64748b');
-            line.setAttribute('stroke-width', major ? 3 : 1.4);
-            ticksG.appendChild(line);
-
-            if (major) {
-                const lp = polar(R_OUT - 38, a);
-                const txt = document.createElementNS(SVG_NS, 'text');
-                txt.setAttribute('x', lp.x); txt.setAttribute('y', lp.y);
-                txt.setAttribute('text-anchor', 'middle');
-                txt.setAttribute('dominant-baseline', 'central');
-                txt.setAttribute('font-size', 19);
-                txt.setAttribute('font-weight', 700);
-                txt.setAttribute('fill', '#0f172a');
-                txt.textContent = v;
-                labelsG.appendChild(txt);
-            }
+    // Änderung des Werts gegenüber dem letzten Messpunkt, der mindestens eine Stunde zurückliegt (null, wenn die Reihe kürzer ist).
+    function trendChange(values, times, idx) {
+        const now = times[idx];
+        if (!Number.isFinite(now)) return null;
+        for (let i = idx - 1; i >= 0; i--) {
+            if (Number.isFinite(times[i]) && now - times[i] >= TREND_WINDOW_MS) return values[idx] - values[i];
         }
-
-        const digital = document.getElementById('digital' + containerId.replace('gauge', ''));
-        return {
-            set(value) {
-                const v = Math.max(cfg.min, Math.min(cfg.max, value));
-                needle.setAttribute('transform', `rotate(${angleFor(v)} ${CX} ${CY})`);
-                digital.firstChild.textContent = v.toFixed(cfg.decimals);
-            }
-        };
+        return null;
     }
 
-    const tempGauge = createGauge('gaugeTemp', {
-        min: -20, max: 40, majorStep: 10, minorStep: 2, unit: '°C', decimals: 1, theme: 'temp',
-        zones: [{ from: -20, to: 0, color: '#2563eb' }],
-        label: 'Analoganzeige Temperatur von minus 20 bis plus 40 Grad Celsius'
-    });
-    const humGauge = createGauge('gaugeHum', {
-        min: 0, max: 100, majorStep: 20, minorStep: 5, unit: '%', decimals: 0, theme: 'hum',
-        zones: [{ from: 80, to: 100, color: '#dc2626' }],
-        label: 'Analoganzeige Luftfeuchte von 0 bis 100 Prozent'
-    });
+    // Zeitraum-Schalter am Diagramm: setzt das (versteckte) Auswahlfeld und lädt neu.
+    document.querySelectorAll('.range-btn').forEach(btn => btn.addEventListener('click', () => {
+        document.getElementById('limitSelect').value = btn.dataset.limit;
+        document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', b === btn));
+        updateData();
+    }));
 
     function calcDewPoint(t, h) {
         if (h <= 0) return t - 50;
@@ -1061,8 +963,8 @@
                 const curDP = dews[idx];
                 const curV = volts[idx];
 
-                tempGauge.set(curT);
-                humGauge.set(curH);
+                tempGauge.set(curT, trendChange(temps, timestamps, idx));
+                humGauge.set(curH, trendChange(hums, timestamps, idx));
 
 
                 document.getElementById('currAbs').textContent = absHums[idx].toFixed(1);
@@ -1083,6 +985,23 @@
                 absLabelEl.style.color = absColor;
                 document.getElementById('absDetail').innerHTML = "<strong>" + curH.toFixed(0) + " %</strong> von max. " + absMax.toFixed(1) + " g/m³ bei " + curT.toFixed(1) + " °C";
                 
+                // Taupunkt und Abstand zur Lufttemperatur: Je kleiner der Abstand, desto näher ist Nebel (gleiche Stufen wie die Zonen im Diagramm).
+                const dewGap = curT - curDP;
+                let dewColor = '#94a3b8', dewHint = '';
+                if (Number.isFinite(dewGap) && dewGap >= 0 && dewGap <= 1.5) {
+                    if (curT <= FROST_WARN_TEMP && curDP <= 0) { dewColor = '#bae6fd'; dewHint = ' · Reifgefahr'; }
+                    else if (dewGap <= 1) { dewColor = '#ef4444'; dewHint = ' · Nebelgefahr'; }
+                    else { dewColor = '#f97316'; dewHint = ' · Nebel möglich'; }
+                }
+                document.getElementById('digitalDew').firstChild.textContent = curDP.toFixed(1);
+                document.getElementById('digitalDew').style.color = colorFromStops(TEMP_LINE_STOPS, curDP); // Taupunkt wie die Temperatur eingefärbt
+                const gapEl = document.getElementById('digitalGap');
+                gapEl.firstChild.textContent = dewGap.toFixed(1);
+                gapEl.style.color = '#94a3b8'; // Zahl immer grau, die Warnfarbe steht nur im Hinweistext
+                const gapHintEl = document.getElementById('gapHint');
+                gapHintEl.textContent = dewHint.replace(' · ', '');
+                gapHintEl.style.color = dewColor;
+
                 const voltEl = document.getElementById('currVolt');
                 const batEl = document.getElementById('batLevel');
                 const vColor = getVoltColor(curV);
