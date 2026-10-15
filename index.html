@@ -99,6 +99,7 @@
 
         .status-copy { display: flex; flex-direction: column; gap: 2px; }
         .status-age { color: var(--text-secondary); font-size: 0.65rem; font-weight: 500; }
+        .status-next { border-left: 1px solid var(--card-border); padding-left: 12px; margin-left: 4px; min-width: 9.5em; }
 
         .dot {
             width: 8px;
@@ -430,6 +431,7 @@
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
+            <div class="status-copy status-next"><span id="nextText">Nächste Messung: --</span><span id="intervalText" class="status-age">Intervall: --</span></div>
         </div>
     </header>
 
@@ -526,7 +528,9 @@
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     let newestMeasurementTimestamp = 0;
-    const LIVE_THRESHOLD_MS = 6 * 60 * 1000;
+    const MIN_LIVE_THRESHOLD_MS = 6 * 60 * 1000;
+    let measureIntervalMs = 0; // typischer Messabstand (Median), aus den geladenen Daten
+    const liveThresholdMs = () => Math.max(MIN_LIVE_THRESHOLD_MS, measureIntervalMs * 2.5);
     const FROST_WARN_TEMP = 2.0;
     const GAP_BREAK_MS = 10 * 60 * 1000; // Ab 10 Minuten ohne Messung bricht die Linie ab
     const MEASUREMENT_STEP_MS = 3 * 60 * 1000; // Messintervall: 3 Minuten
@@ -871,9 +875,20 @@
         } else {
             ageText.textContent = 'Keine Messung';
         }
-        const isStale = ageMs === null || ageMs >= LIVE_THRESHOLD_MS;
+        const nextText = document.getElementById('nextText');
+        const intervalText = document.getElementById('intervalText');
+        if (measureIntervalMs > 0 && ageMs !== null) {
+            intervalText.textContent = `Intervall: ${Math.round(measureIntervalMs / 60000)} min`;
+            const remaining = Math.round((measureIntervalMs - ageMs) / 60000);
+            nextText.textContent = ageMs > liveThresholdMs() ? 'Nächste Messung: überfällig'
+                : remaining > 0 ? `Nächste Messung: ca. ${remaining} min` : 'Nächste Messung: jetzt fällig';
+        } else {
+            nextText.textContent = 'Nächste Messung: --';
+            intervalText.textContent = 'Intervall: --';
+        }
+        const isStale = ageMs === null || ageMs >= liveThresholdMs();
         document.querySelectorAll('.card, .chart-note').forEach(el => el.classList.toggle('stale', isStale));
-        if (ageMs !== null && ageMs < LIVE_THRESHOLD_MS) {
+        if (ageMs !== null && ageMs < liveThresholdMs()) {
             dot.classList.add('online');
             txt.textContent = "LIVE";
             txt.style.color = "#22c55e";
@@ -967,6 +982,13 @@
                     timestamps.push(Number.isFinite(measurementTime) ? measurementTime : null);
                 }
             });
+
+            const gaps = [];
+            for (let i = 1; i < timestamps.length; i++) {
+                if (timestamps[i] && timestamps[i - 1]) gaps.push(timestamps[i] - timestamps[i - 1]);
+            }
+            gaps.sort((a, b) => a - b);
+            measureIntervalMs = gaps.length ? gaps[Math.floor(gaps.length / 2)] : 0;
 
             if (temps.length > 0) {
                 const idx = temps.length - 1;
