@@ -213,6 +213,8 @@
             font-weight: 600;
             color: var(--text-secondary);
         }
+        .gauge-minmax { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .minmax-time { margin-top: 6px; text-align: center; color: var(--text-secondary); font-size: 0.7rem; font-weight: 500; }
         .gauge-digital { font-size: 1.4rem; font-weight: 400; color: var(--text-primary); line-height: 1; }
         .gauge-digital span { font-size: 0.8rem; color: var(--text-secondary); margin-left: 3px; font-weight: 500; }
         .abs-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -431,7 +433,6 @@
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
-            <div class="status-copy status-next"><span id="minText">Heute Min: --</span><span id="maxText" class="status-age">Heute Max: --</span></div>
         </div>
     </header>
 
@@ -448,6 +449,18 @@
             <div class="gauge-reading">
                 <div id="digitalHum" class="gauge-digital">--<span>%</span></div>
                 <span id="trendHum" class="trend-arrow" aria-label="Trend Feuchte"></span>
+            </div>
+        </div>
+        <div class="gauge-minmax">
+            <div class="gauge-card minmax-item">
+                <h3>Heute Min</h3>
+                <div class="gauge-reading"><div id="minValue" class="gauge-digital" style="color:#60a5fa">--<span>°C</span></div></div>
+                <div id="minTime" class="minmax-time">&nbsp;</div>
+            </div>
+            <div class="gauge-card minmax-item">
+                <h3>Heute Max</h3>
+                <div class="gauge-reading"><div id="maxValue" class="gauge-digital" style="color:#ef4444">--<span>°C</span></div></div>
+                <div id="maxTime" class="minmax-time">&nbsp;</div>
             </div>
         </div>
         <div class="gauge-card">
@@ -871,8 +884,8 @@
         return out;
     }
     async function updateTodayExtremes(session) {
-        const minEl = document.getElementById('minText');
-        const maxEl = document.getElementById('maxText');
+        const minVal = document.getElementById('minValue'), maxVal = document.getElementById('maxValue');
+        const minTime = document.getElementById('minTime'), maxTime = document.getElementById('maxTime');
         try {
             const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
             const url = `${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&startAt="${pushKeyPrefix(midnight.getTime())}"`;
@@ -886,12 +899,15 @@
                 if (!max || t > max.t) max = { t, time };
             });
             if (!min) throw new Error('keine Daten heute');
-            const fmt = v => v.toFixed(1).replace('.', ',') + ' °C';
-            minEl.textContent = `Heute Min: ${fmt(min.t)} um ${new Date(min.time).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
-            maxEl.textContent = `Heute Max: ${fmt(max.t)}`;
+            const fmt = v => v.toFixed(1).replace('.', ',');
+            const hhmm = ms => new Date(ms).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+            minVal.innerHTML = `${fmt(min.t)}<span>°C</span>`;
+            maxVal.innerHTML = `${fmt(max.t)}<span>°C</span>`;
+            minTime.textContent = `um ${hhmm(min.time)}`;
+            maxTime.textContent = `um ${hhmm(max.time)}`;
         } catch (e) {
-            minEl.textContent = 'Heute Min: --';
-            maxEl.textContent = 'Heute Max: --';
+            minVal.innerHTML = '--<span>°C</span>'; maxVal.innerHTML = '--<span>°C</span>';
+            minTime.innerHTML = '&nbsp;'; maxTime.innerHTML = '&nbsp;';
         }
     }
 
