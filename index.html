@@ -431,7 +431,7 @@
         <div class="status-indicator">
             <div id="statusDot" class="dot"></div>
             <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
-            <div class="status-copy status-next"><span id="nextText">Nächste Messung: --</span><span id="intervalText" class="status-age">Intervall: --</span></div>
+            <div class="status-copy status-next"><span id="minText">Heute Min: --</span><span id="maxText" class="status-age">Heute Max: --</span></div>
         </div>
     </header>
 
@@ -863,6 +863,38 @@
             el.title = "Feuchtigkeit fällt";
         }
     }
+    // Tages-Min/Max der Temperatur seit 00:00 Uhr, unabhängig vom gewählten Diagrammfenster.
+    function pushKeyPrefix(ms) {
+        const alphabet = '-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz';
+        let out = '';
+        for (let i = 0; i < 8; i++) { out = alphabet[ms % 64] + out; ms = Math.floor(ms / 64); }
+        return out;
+    }
+    async function updateTodayExtremes(session) {
+        const minEl = document.getElementById('minText');
+        const maxEl = document.getElementById('maxText');
+        try {
+            const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+            const url = `${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&startAt="${pushKeyPrefix(midnight.getTime())}"`;
+            const data = await (await fetch(url)).json();
+            let min = null, max = null;
+            Object.keys(data || {}).forEach(k => {
+                const t = parseFloat(data[k] && data[k].t);
+                const time = getFirebasePushTime(k);
+                if (!Number.isFinite(t) || !time) return;
+                if (!min || t < min.t) min = { t, time };
+                if (!max || t > max.t) max = { t, time };
+            });
+            if (!min) throw new Error('keine Daten heute');
+            const fmt = v => v.toFixed(1).replace('.', ',') + ' °C';
+            minEl.textContent = `Heute Min: ${fmt(min.t)} um ${new Date(min.time).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+            maxEl.textContent = `Heute Max: ${fmt(max.t)}`;
+        } catch (e) {
+            minEl.textContent = 'Heute Min: --';
+            maxEl.textContent = 'Heute Max: --';
+        }
+    }
+
     function updateStatusIndicator() {
         const dot = document.getElementById('statusDot');
         const txt = document.getElementById('statusText');
@@ -874,17 +906,6 @@
             ageText.textContent = ageSeconds < 60 ? `Messung vor ${ageSeconds} s` : `Messung vor ${Math.floor(ageSeconds / 60)} min`;
         } else {
             ageText.textContent = 'Keine Messung';
-        }
-        const nextText = document.getElementById('nextText');
-        const intervalText = document.getElementById('intervalText');
-        if (measureIntervalMs > 0 && ageMs !== null) {
-            intervalText.textContent = `Intervall: ${Math.round(measureIntervalMs / 60000)} min`;
-            const remaining = Math.round((measureIntervalMs - ageMs) / 60000);
-            nextText.textContent = ageMs > liveThresholdMs() ? 'Nächste Messung: überfällig'
-                : remaining > 0 ? `Nächste Messung: ca. ${remaining} min` : 'Nächste Messung: jetzt fällig';
-        } else {
-            nextText.textContent = 'Nächste Messung: --';
-            intervalText.textContent = 'Intervall: --';
         }
         const isStale = ageMs === null || ageMs >= liveThresholdMs();
         document.querySelectorAll('.card, .chart-note').forEach(el => el.classList.toggle('stale', isStale));
@@ -945,6 +966,7 @@
             updateStatusIndicator();
             return;
         }
+        updateTodayExtremes(session);
         try {
             const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=10000`);
             const data = await response.json();
