@@ -464,17 +464,17 @@
     </section>
 
     <div class="range-bar" role="group" aria-label="Zeitraum im Diagramm">
-        <button type="button" class="range-btn" data-limit="20">1 Std</button>
-        <button type="button" class="range-btn active" data-limit="80">4 Std</button>
-        <button type="button" class="range-btn" data-limit="240">12 Std</button>
-        <button type="button" class="range-btn" data-limit="480">24 Std</button>
-        <button type="button" class="range-btn" data-limit="10000">Session</button>
+        <button type="button" class="range-btn" data-limit="1">1 Std</button>
+        <button type="button" class="range-btn active" data-limit="4">4 Std</button>
+        <button type="button" class="range-btn" data-limit="12">12 Std</button>
+        <button type="button" class="range-btn" data-limit="24">24 Std</button>
+        <button type="button" class="range-btn" data-limit="0">Session</button>
         <select id="limitSelect" hidden onchange="updateData()">
-            <option value="20">Letzte 60 Minuten</option>
-            <option value="80" selected>Letzte 4 Stunden</option>
-            <option value="240">Letzte 12 Stunden</option>
-            <option value="480">Letzte 24 Stunden</option>
-            <option value="10000">Ganze Session</option>
+            <option value="1">Letzte 60 Minuten</option>
+            <option value="4" selected>Letzte 4 Stunden</option>
+            <option value="12">Letzte 12 Stunden</option>
+            <option value="24">Letzte 24 Stunden</option>
+            <option value="0">Ganze Session</option>
         </select>
     </div>
 
@@ -923,7 +923,7 @@
         }
     }
     async function updateData() {
-        const limit = document.getElementById('limitSelect').value;
+        const hoursBack = Number(document.getElementById('limitSelect').value); // Zeitfenster in Stunden, 0 = ganze Session
         const session = document.getElementById('sessionSelect').value;
         if (!session) {
             newestMeasurementTimestamp = 0;
@@ -931,7 +931,7 @@
             return;
         }
         try {
-            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=${limit}`);
+            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=10000`);
             const data = await response.json();
             if (!data) {
                 newestMeasurementTimestamp = 0;
@@ -939,7 +939,12 @@
                 return;
             }
 
-            const keys = Object.keys(data).sort();
+            let keys = Object.keys(data).sort();
+            if (hoursBack > 0) {
+                // Push-Keys sind zeitgeordnet: Fenster nach echter Zeit statt nach Datensatzanzahl.
+                const newest = getFirebasePushTime(keys[keys.length - 1]);
+                if (newest) keys = keys.filter(k => (getFirebasePushTime(k) ?? newest) >= newest - hoursBack * 3600000);
+            }
             const temps = [], hums = [], volts = [], dews = [], absHums = [], timestamps = [];
             const sessionMatch = session.match(/^(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})$/);
             
