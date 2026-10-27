@@ -275,6 +275,32 @@
         }
         .danger-button:hover { background: #991b1b; }
         .danger-button:focus-visible, select:focus-visible { outline: 3px solid #fca5a5; outline-offset: 2px; }
+        .sd-group {
+            border: 1px solid var(--card-border);
+            background: var(--surface-2);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .sd-group p { margin: 0; color: var(--text-secondary); font-size: 0.8rem; line-height: 1.45; }
+        .sd-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+        .sd-button {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--color-accent);
+            padding: 11px 14px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .sd-button:hover { background: #163042; }
+        .sd-button:focus-visible { outline: 3px solid var(--color-accent); outline-offset: 2px; }
+        .sd-button:disabled, .danger-button:disabled { opacity: 0.5; cursor: wait; }
+        .sd-status { color: var(--text-secondary); font-size: 0.8rem; }
+        .sd-status strong { color: var(--text-primary); }
         .chart-wrapper {
             grid-column: span 4;
             background: var(--chart-bg);
@@ -384,7 +410,7 @@
 
         @media (min-width: 801px) {
             .controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
-            .delete-group { grid-column: 1 / -1; }
+            .delete-group, .sd-group { grid-column: 1 / -1; }
         }
 
         @media (max-width: 800px) {
@@ -526,6 +552,15 @@
         <div class="control-group">
             <label for="sessionSelect">Aktive Session</label>
             <select id="sessionSelect" onchange="updateData()"></select>
+        </div>
+
+        <div class="sd-group">
+            <p>SD-Karte des Datenloggers. Der Befehl wird in Firebase gespeichert und beim nächsten Aufwachen des ESP32 (etwa alle 10 Minuten) ausgeführt.</p>
+            <div class="sd-buttons">
+                <button id="sdReadBtn" class="sd-button" type="button" onclick="sendSdCommand('lesen')">SD-Karte auslesen</button>
+                <button id="sdDeleteBtn" class="danger-button" type="button" onclick="sendSdCommand('loeschen')">SD-Karte löschen</button>
+            </div>
+            <div id="sdStatus" class="sd-status">Kein Befehl gesendet</div>
         </div>
 
         <div class="delete-group">
@@ -974,6 +1009,41 @@
             alert('Die Session konnte nicht gelöscht werden. Prüfe die Firebase-Regeln.');
         }
     }
+    // --- SD-Karte: Befehle (lesen/löschen) laufen über Firebase, der ESP32 führt sie beim Aufwachen aus ---
+    const SD_COMMAND_URL = `${dbUrl}SD_Befehl.json`;
+
+    async function sendSdCommand(aktion) {
+        if (aktion === 'loeschen' && !confirm(
+            'Alle CSV-Dateien auf der SD-Karte wirklich löschen?\n\nDie Daten sind danach nur noch in Firebase vorhanden, soweit sie dort gespeichert wurden.'
+        )) return;
+        const readBtn = document.getElementById('sdReadBtn'), deleteBtn = document.getElementById('sdDeleteBtn');
+        readBtn.disabled = deleteBtn.disabled = true;
+        try {
+            const response = await fetch(SD_COMMAND_URL, { method: 'PUT', body: JSON.stringify({ aktion, status: 'offen', zeit: Date.now() }) });
+            if (!response.ok) throw new Error('Firebase HTTP ' + response.status);
+            await loadSdStatus();
+        } catch (e) {
+            console.error(e);
+            document.getElementById('sdStatus').textContent = 'Befehl konnte nicht gesendet werden. Prüfe die Firebase-Regeln.';
+        } finally {
+            readBtn.disabled = deleteBtn.disabled = false;
+        }
+    }
+
+    async function loadSdStatus() {
+        const el = document.getElementById('sdStatus');
+        try {
+            const cmd = await (await fetch(SD_COMMAND_URL)).json();
+            if (!cmd || !cmd.aktion) { el.textContent = 'Kein Befehl gesendet'; return; }
+            const aktion = cmd.aktion === 'loeschen' ? 'Löschen' : 'Auslesen';
+            const zeit = new Date(cmd.zeit).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const status = cmd.status === 'offen' ? 'wartet auf den ESP32' : cmd.status === 'erledigt' ? 'ausgeführt' : String(cmd.status || '');
+            el.textContent = `Letzter Befehl: ${aktion} am ${zeit}, ${status}`;
+        } catch (e) {
+            el.textContent = 'SD-Status nicht abrufbar';
+        }
+    }
+
     async function updateData() {
         const hoursBack = Number(document.getElementById('limitSelect').value); // Zeitfenster in Stunden, 0 = ganze Session
         const session = document.getElementById('sessionSelect').value;
@@ -1171,7 +1241,9 @@
     async function init() {
         await loadSessions();
         await updateData();
-        setInterval(loadSessions, 60000); 
+        await loadSdStatus();
+        setInterval(loadSessions, 60000);
+        setInterval(loadSdStatus, 60000);
         setInterval(updateData, 30000);
         setInterval(updateStatusIndicator, 5000);
     }
