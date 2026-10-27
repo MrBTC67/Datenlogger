@@ -183,6 +183,76 @@ def sd_read_all():
                 print(line.rstrip())
         print("----- Ende " + name + " -----")
 
+# --- SD-BEFEHLE ÜBER FIREBASE ---
+# Die HTML schreibt Befehle nach SD_Befehl (aktion: lesen/loeschen, status: offen).
+# Der ESP32 führt sie nach einer WLAN-Verbindung aus und meldet status und ergebnis zurück.
+# Gelesene Zeilen landen unter SD_Daten/<session>, damit die HTML sie wie Live-Daten zeichnet.
+SD_BEFEHL_URL = FIREBASE_BASE + "SD_Befehl.json"
+SD_DATEN_URL = FIREBASE_BASE + "SD_Daten/"
+SD_CHUNK = 50  # Zeilen pro Firebase-Anfrage, spart RAM
+
+def sd_patch(url, data):
+    res = urequests.request("PATCH", url, json=data, timeout=15)
+    res.close()
+
+def sd_hochladen(name):
+    """Lädt eine CSV-Datei zeilenweise nach SD_Daten hoch. Gibt die Zeilenzahl zurück."""
+    url = SD_DATEN_URL + name[:-4] + ".json"
+    res = urequests.delete(url, timeout=15)
+    res.close()
+    anzahl = 0
+    chunk = {}
+    with open(SD_MOUNT + "/" + name, "r") as f:
+        f.readline()  # Kopfzeile überspringen
+        for line in f:
+            teile = line.strip().split(",")
+            if len(teile) != 6:
+                continue
+            chunk[teile[0]] = {"t": float(teile[1]), "h": float(teile[2]), "d": float(teile[3]),
+                               "v": float(teile[4]), "s": teile[5], "ts": teile[0]}
+            anzahl += 1
+            if len(chunk) >= SD_CHUNK:
+                sd_patch(url, chunk)
+                chunk = {}
+                gc.collect()
+    if chunk:
+        sd_patch(url, chunk)
+    return anzahl
+
+def sd_befehl_ausfuehren():
+    """Prüft SD_Befehl in Firebase und führt einen offenen Befehl aus. Läuft nur bei bestehendem WLAN."""
+    try:
+        res = urequests.get(SD_BEFEHL_URL, timeout=10)
+        befehl = res.json()
+        res.close()
+    except Exception:
+        return
+    if not befehl or befehl.get("status") != "offen":
+        return
+    aktion = befehl.get("aktion")
+    try:
+        dateien = sorted(f for f in os.listdir(SD_MOUNT) if f.endswith(".csv"))
+        if aktion == "lesen":
+            zeilen = 0
+            for name in dateien:
+                zeilen += sd_hochladen(name)
+                gc.collect()
+            ergebnis = "{} Dateien, {} Zeilen".format(len(dateien), zeilen)
+        elif aktion == "loeschen":
+            for name in dateien:
+                os.remove(SD_MOUNT + "/" + name)
+            ergebnis = "{} Dateien gelöscht".format(len(dateien))
+        else:
+            ergebnis = "Unbekannte Aktion: " + str(aktion)
+        status = "erledigt"
+    except Exception as e:
+        status = "fehler"
+        ergebnis = str(e)
+    try:
+        sd_patch(SD_BEFEHL_URL, {"status": status, "ergebnis": ergebnis})
+    except Exception:
+        pass
+
 # Lesemodus: Liegt die Datei LESEN.txt auf der SD-Karte, werden die Daten
 # nur ausgegeben und keine Messungen gestartet. Datei danach löschen
 # (am PC) und den ESP32 neu starten, um wieder normal zu messen.
@@ -264,6 +334,8 @@ while True:
                     "v": v_batt, "s": status, "ts": ts
                 }
                 send_to_firebase(current_session_url, payload)
+                if sd_ok:
+                    sd_befehl_ausfuehren()
                 disconnect_wifi()
             elif sd_ok and session_id is not None:
                 # Ohne WLAN keine NTP-Zeit: lokale Uhr, SD-Daten bleiben trotzdem erhalten

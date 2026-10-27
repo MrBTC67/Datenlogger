@@ -545,8 +545,11 @@
 
     <div class="controls">
         <div class="control-group">
-            <label>Datenansicht</label>
-            <div class="system-status">Live-Datenlogger</div>
+            <label for="quelleSelect">Datenquelle</label>
+            <select id="quelleSelect" onchange="setQuelle(this.value)">
+                <option value="Datenlogger">Live (Firebase)</option>
+                <option value="SD_Daten">SD-Karte</option>
+            </select>
         </div>
 
         <div class="control-group">
@@ -576,6 +579,7 @@
     const dbUrl = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/";
     const ctx = document.getElementById('astroChart').getContext('2d');
     let newestMeasurementTimestamp = 0;
+    let datenQuelle = 'Datenlogger'; // 'Datenlogger' = Live (Firebase), 'SD_Daten' = von der SD-Karte übertragen
     const MIN_LIVE_THRESHOLD_MS = 6 * 60 * 1000;
     let measureIntervalMs = 0; // typischer Messabstand (Median), aus den geladenen Daten
     const liveThresholdMs = () => Math.max(MIN_LIVE_THRESHOLD_MS, measureIntervalMs * 2.5);
@@ -973,7 +977,7 @@
 
     async function loadSessions() {
         try {
-            const r = await fetch(`${dbUrl}Datenlogger.json?shallow=true`);
+            const r = await fetch(`${dbUrl}${datenQuelle}.json?shallow=true`);
             const s = await r.json();
             if (!s) return;
             const sel = document.getElementById('sessionSelect');
@@ -999,7 +1003,7 @@
         );
         if (!confirmed) return;
         try {
-            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json`, { method: 'DELETE' });
+            const response = await fetch(`${dbUrl}${datenQuelle}/${encodeURIComponent(session)}.json`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Firebase HTTP ' + response.status);
             await loadSessions();
             await updateData();
@@ -1038,7 +1042,7 @@
             const aktion = cmd.aktion === 'loeschen' ? 'Löschen' : 'Auslesen';
             const zeit = new Date(cmd.zeit).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
             const status = cmd.status === 'offen' ? 'wartet auf den ESP32' : cmd.status === 'erledigt' ? 'ausgeführt' : String(cmd.status || '');
-            el.textContent = `Letzter Befehl: ${aktion} am ${zeit}, ${status}`;
+            el.textContent = `Letzter Befehl: ${aktion} am ${zeit}, ${status}` + (cmd.ergebnis ? ` (${cmd.ergebnis})` : '');
         } catch (e) {
             el.textContent = 'SD-Status nicht abrufbar';
         }
@@ -1052,9 +1056,9 @@
             updateStatusIndicator();
             return;
         }
-        updateTodayExtremes(session);
+        if (datenQuelle === 'Datenlogger') updateTodayExtremes(session);
         try {
-            const response = await fetch(`${dbUrl}Datenlogger/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=10000`);
+            const response = await fetch(`${dbUrl}${datenQuelle}/${encodeURIComponent(session)}.json?orderBy="$key"&limitToLast=10000`);
             const data = await response.json();
             if (!data) {
                 newestMeasurementTimestamp = 0;
@@ -1080,7 +1084,11 @@
                     const ts = String(entry.ts || k);
                     const pushTime = getFirebasePushTime(k);
                     const rowDate = pushTime ? new Date(pushTime) : (sessionMatch ? new Date(Number(sessionMatch[1]), Number(sessionMatch[2]) - 1, Number(sessionMatch[3])) : null);
-                    const measurementTime = pushTime || (rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)
+                    // SD-Zeilen tragen Datum und Uhrzeit ("2026-10-27 14:30:00"), ältere nur "14:30:00" und nutzen das Datum der Session.
+                    const fullTs = ts.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})$/);
+                    const measurementTime = pushTime || (fullTs
+                        ? new Date(+fullTs[1], fullTs[2] - 1, +fullTs[3], +fullTs[4], +fullTs[5], +fullTs[6]).getTime()
+                        : rowDate && /^\d{2}:\d{2}:\d{2}$/.test(ts)
                         ? new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate(), Number(ts.slice(0, 2)), Number(ts.slice(3, 5)), Number(ts.slice(6, 8))).getTime()
                         : null);
                     if (measurementTime) newestMeasurementTimestamp = measurementTime;
@@ -1236,6 +1244,12 @@
                 document.getElementById('dataAge').textContent = "Datenabruf fehlgeschlagen";
             }
         }
+    }
+
+    // Wechsel zwischen Live-Daten und SD-Karte: Sessions neu laden, dann Diagramm aktualisieren.
+    function setQuelle(quelle) {
+        datenQuelle = quelle;
+        loadSessions().then(updateData);
     }
 
     async function init() {
