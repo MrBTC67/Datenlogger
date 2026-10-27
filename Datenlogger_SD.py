@@ -219,6 +219,46 @@ def sd_hochladen(name):
         sd_patch(url, chunk)
     return anzahl
 
+def sd_session_von_firebase(session):
+    """Schreibt eine komplette Firebase-Session als CSV (FB_<session>.csv) auf die SD-Karte. Gibt die Zeilenzahl zurück."""
+    basis = FIREBASE_BASE + "Datenlogger/" + session + ".json"
+    res = urequests.get(basis + "?shallow=true", timeout=15)
+    vorhanden = res.json()
+    res.close()
+    if not vorhanden:
+        return 0
+    # Datum steht im Session-Namen (JJJJMMTT_HHMM), die Firebase-Zeilen nur als HH:MM:SS
+    datum = session[0:4] + "-" + session[4:6] + "-" + session[6:8] + " "
+    anzahl = 0
+    letzter = None
+    with open(SD_MOUNT + "/FB_" + session + ".csv", "w") as f:
+        f.write("zeit,temp_c,feuchte_pct,taupunkt_c,akku_v,status\n")
+        while True:
+            url = basis + '?orderBy="$key"&limitToFirst=' + str(SD_CHUNK)
+            if letzter is not None:
+                url += '&startAt="' + letzter + '"'
+            res = urequests.get(url, timeout=15)
+            seite = res.json()
+            res.close()
+            if not seite:
+                break
+            neu = 0
+            for k in sorted(seite.keys()):
+                e = seite[k]
+                if (letzter is not None and k <= letzter) or not isinstance(e, dict):
+                    continue
+                ts = str(e.get("ts") or k)
+                zeit = ts if " " in ts else datum + ts
+                f.write("{},{:.2f},{:.2f},{:.2f},{:.2f},{}\n".format(
+                    zeit, e.get("t", 0), e.get("h", 0), e.get("d", 0), e.get("v", 0), e.get("s", "")))
+                letzter = k
+                anzahl += 1
+                neu += 1
+            gc.collect()
+            if neu == 0 or len(seite) < SD_CHUNK:
+                break
+    return anzahl
+
 def sd_befehl_ausfuehren():
     """Prüft SD_Befehl in Firebase und führt einen offenen Befehl aus. Läuft nur bei bestehendem WLAN."""
     try:
@@ -242,6 +282,10 @@ def sd_befehl_ausfuehren():
             for name in dateien:
                 os.remove(SD_MOUNT + "/" + name)
             ergebnis = "{} Dateien gelöscht".format(len(dateien))
+        elif aktion == "speichern":
+            session = befehl.get("session")
+            zeilen = sd_session_von_firebase(session)
+            ergebnis = "Session {}: {} Zeilen auf SD".format(session, zeilen)
         else:
             ergebnis = "Unbekannte Aktion: " + str(aktion)
         status = "erledigt"

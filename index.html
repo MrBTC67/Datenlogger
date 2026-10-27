@@ -561,6 +561,7 @@
             <p>SD-Karte des Datenloggers. Der Befehl wird in Firebase gespeichert und beim nächsten Aufwachen des ESP32 (etwa alle 10 Minuten) ausgeführt.</p>
             <div class="sd-buttons">
                 <button id="sdReadBtn" class="sd-button" type="button" onclick="sendSdCommand('lesen')">SD-Karte auslesen</button>
+                <button id="sdSaveBtn" class="sd-button" type="button" onclick="sendSdCommand('speichern')">Session auf SD-Karte speichern</button>
                 <button id="sdDeleteBtn" class="danger-button" type="button" onclick="sendSdCommand('loeschen')">SD-Karte löschen</button>
             </div>
             <div id="sdStatus" class="sd-status">Kein Befehl gesendet</div>
@@ -1020,17 +1021,24 @@
         if (aktion === 'loeschen' && !confirm(
             'Alle CSV-Dateien auf der SD-Karte wirklich löschen?\n\nDie Daten sind danach nur noch in Firebase vorhanden, soweit sie dort gespeichert wurden.'
         )) return;
-        const readBtn = document.getElementById('sdReadBtn'), deleteBtn = document.getElementById('sdDeleteBtn');
-        readBtn.disabled = deleteBtn.disabled = true;
+        const session = document.getElementById('sessionSelect').value;
+        if (aktion === 'speichern' && (!session || datenQuelle !== 'Datenlogger')) {
+            document.getElementById('sdStatus').textContent = 'Zum Speichern bitte die Datenquelle „Live (Firebase)“ mit einer Session wählen.';
+            return;
+        }
+        const readBtn = document.getElementById('sdReadBtn'), saveBtn = document.getElementById('sdSaveBtn'), deleteBtn = document.getElementById('sdDeleteBtn');
+        readBtn.disabled = saveBtn.disabled = deleteBtn.disabled = true;
+        const befehl = { aktion, status: 'offen', zeit: Date.now() };
+        if (aktion === 'speichern') befehl.session = session;
         try {
-            const response = await fetch(SD_COMMAND_URL, { method: 'PUT', body: JSON.stringify({ aktion, status: 'offen', zeit: Date.now() }) });
+            const response = await fetch(SD_COMMAND_URL, { method: 'PUT', body: JSON.stringify(befehl) });
             if (!response.ok) throw new Error('Firebase HTTP ' + response.status);
             await loadSdStatus();
         } catch (e) {
             console.error(e);
             document.getElementById('sdStatus').textContent = 'Befehl konnte nicht gesendet werden. Prüfe die Firebase-Regeln.';
         } finally {
-            readBtn.disabled = deleteBtn.disabled = false;
+            readBtn.disabled = saveBtn.disabled = deleteBtn.disabled = false;
         }
     }
 
@@ -1039,7 +1047,7 @@
         try {
             const cmd = await (await fetch(SD_COMMAND_URL)).json();
             if (!cmd || !cmd.aktion) { el.textContent = 'Kein Befehl gesendet'; return; }
-            const aktion = cmd.aktion === 'loeschen' ? 'Löschen' : 'Auslesen';
+            const aktion = cmd.aktion === 'loeschen' ? 'Löschen' : cmd.aktion === 'speichern' ? 'Speichern' + (cmd.session ? ' ' + cmd.session : '') : 'Auslesen';
             const zeit = new Date(cmd.zeit).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
             const status = cmd.status === 'offen' ? 'wartet auf den ESP32' : cmd.status === 'erledigt' ? 'ausgeführt' : String(cmd.status || '');
             el.textContent = `Letzter Befehl: ${aktion} am ${zeit}, ${status}` + (cmd.ergebnis ? ` (${cmd.ergebnis})` : '');
