@@ -6,6 +6,12 @@ SD_MOUNT = "/sd"
 TESTDATEI = SD_MOUNT + "/SD_CHECK.txt"
 
 print("1. SD-Karte einhaengen ...")
+# Alter Mount (z. B. von einem noch laufenden Datenlogger) stoerzt sonst mit ESP_ERR_INVALID_STATE
+try:
+    os.umount(SD_MOUNT)
+    print("   Alter Mount ausgehaengt")
+except OSError:
+    pass
 try:
     sd = machine.SDCard(slot=3, sck=SD_SCK, mosi=SD_MOSI, miso=SD_MISO, cs=SD_CS)
     os.mount(sd, SD_MOUNT)
