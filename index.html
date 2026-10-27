@@ -980,8 +980,9 @@
         try {
             const r = await fetch(`${dbUrl}${datenQuelle}.json?shallow=true`);
             const s = await r.json();
-            if (!s) return;
             const sel = document.getElementById('sessionSelect');
+            // Leere Quelle (z. B. SD_Daten noch ohne Daten): alte Liste der anderen Quelle nicht stehen lassen.
+            if (!s) { sel.innerHTML = ""; return; }
             const currentVal = sel.value;
             const keys = Object.keys(s).sort().reverse();
             sel.innerHTML = "";
