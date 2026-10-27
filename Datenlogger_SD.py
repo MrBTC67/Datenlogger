@@ -360,32 +360,29 @@ while True:
         else: set_rgb(1, 0, 0)                        # Rot: Tau-, Reif- oder Frostgefahr
 
         try:
-            if connect_wifi():
-                now = get_berlin_time()
-                # Dieselbe Zeit wie in Firebase, damit SD und Firebase übereinstimmen
-                ts = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(now[0], now[1], now[2], now[3], now[4], now[5])
-                # Session nachholen, falls beim Start noch kein WLAN war
-                if session_id is None:
-                    session_id = get_session_id()
-                    rtc_save_session(session_id)
-                    current_session_url = FIREBASE_BASE + "Datenlogger/" + session_id + ".json"
+            wlan_ok = connect_wifi()
+            # Mit WLAN NTP-Zeit, ohne WLAN lokale Uhr
+            now = get_berlin_time()
+            ts = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(now[0], now[1], now[2], now[3], now[4], now[5])
+            # Session nachholen, falls beim Start noch kein WLAN war
+            if session_id is None and wlan_ok:
+                session_id = get_session_id()
+                rtc_save_session(session_id)
+                current_session_url = FIREBASE_BASE + "Datenlogger/" + session_id + ".json"
 
-                if sd_ok and session_id is not None:
+            # Entweder SD-Karte oder Firebase, nie beides: SD-Karte steckt, sonst Firebase
+            if sd_ok:
+                if session_id is not None:
                     sd_log_csv(session_id, ts, temp, hum, dew, v_batt, status)
-
+                if wlan_ok:
+                    sd_befehl_ausfuehren()
+            elif wlan_ok:
                 payload = {
                     "t": round(temp, 2), "h": round(hum, 2), "d": round(diff, 2),
                     "v": v_batt, "s": status, "ts": ts
                 }
                 send_to_firebase(current_session_url, payload)
-                if sd_ok:
-                    sd_befehl_ausfuehren()
-                disconnect_wifi()
-            elif sd_ok and session_id is not None:
-                # Ohne WLAN keine NTP-Zeit: lokale Uhr, SD-Daten bleiben trotzdem erhalten
-                now = get_berlin_time()
-                ts = "{:04d}-{:02d}-{:02d} {:02d}:{:02d}:{:02d}".format(now[0], now[1], now[2], now[3], now[4], now[5])
-                sd_log_csv(session_id, ts, temp, hum, dew, v_batt, status)
+            disconnect_wifi()
         except OSError:
             machine.reset()
 
