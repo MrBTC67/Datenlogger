@@ -4,6 +4,7 @@ import machine, time, math, gc, network, urequests, ntptime, os
 WLAN_SSID = "Starlink1"
 WLAN_PASS = "astroman"
 FIREBASE_BASE = "https://wetterdaten-98f0f-default-rtdb.europe-west1.firebasedatabase.app/"
+SPEICHERZIEL = "sd"       # "sd" = nur SD-Karte, "firebase" = nur Firebase
 
 SDA_PIN, SCL_PIN = 21, 22
 PIN_R, PIN_G, PIN_B = 25, 26, 27
@@ -313,8 +314,8 @@ def sd_lesemodus_aktiv():
 sensor = SHT3x(i2c)
 
 sd_ok = sd_mount()
-if not sd_ok:
-    print("Keine SD-Karte gefunden, es wird nur ueber WLAN gesendet.")
+if SPEICHERZIEL == "sd" and not sd_ok:
+    print("SD-Karte gewaehlt, aber keine SD-Karte gefunden.")
 
 if sd_ok and sd_lesemodus_aktiv():
     print("Lesemodus: Daten der SD-Karte werden ausgegeben.")
@@ -370,11 +371,11 @@ while True:
                 rtc_save_session(session_id)
                 current_session_url = FIREBASE_BASE + "Datenlogger/" + session_id + ".json"
 
-            # Entweder SD-Karte oder Firebase, nie beides: SD-Karte steckt, sonst Firebase
-            if sd_ok:
-                if session_id is not None:
+            # Entweder SD-Karte oder Firebase, nie beides (Einstellung SPEICHERZIEL)
+            if SPEICHERZIEL == "sd":
+                if sd_ok and session_id is not None:
                     sd_log_csv(session_id, ts, temp, hum, dew, v_batt, status)
-                if wlan_ok:
+                if sd_ok and wlan_ok:
                     sd_befehl_ausfuehren()
             elif wlan_ok:
                 payload = {
