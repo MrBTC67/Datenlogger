@@ -1050,8 +1050,14 @@
             if (!cmd || !cmd.aktion) { el.textContent = 'Kein Befehl gesendet'; return; }
             const aktion = cmd.aktion === 'loeschen' ? 'Löschen' : cmd.aktion === 'speichern' ? 'Speichern' + (cmd.session ? ' ' + cmd.session : '') : 'Auslesen';
             const zeit = new Date(cmd.zeit).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-            const status = cmd.status === 'offen' ? 'wartet auf den ESP32' : cmd.status === 'erledigt' ? 'ausgeführt' : String(cmd.status || '');
-            el.textContent = `Letzter Befehl: ${aktion} am ${zeit}, ${status}` + (cmd.ergebnis ? ` (${cmd.ergebnis})` : '');
+            const offen = cmd.status === 'offen';
+            const status = offen ? 'Befehl empfangen, wartet auf Ausführung durch den ESP32 (nächstes Aufwachen)'
+                : cmd.status === 'erledigt' ? 'ausgeführt'
+                : cmd.status === 'fehler' ? 'Fehler'
+                : String(cmd.status || '');
+            el.textContent = `Letzter Befehl (${zeit}): ${aktion}, ${status}` + (cmd.ergebnis && !offen ? ` (${cmd.ergebnis})` : '');
+            el.style.color = offen ? '#fbbf24' : cmd.status === 'fehler' ? '#ef4444' : '#22c55e';
+            el.style.fontWeight = '700';
         } catch (e) {
             el.textContent = 'SD-Status nicht abrufbar';
         }
