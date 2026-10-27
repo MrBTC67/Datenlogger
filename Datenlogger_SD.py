@@ -190,7 +190,7 @@ def sd_read_all():
 # Gelesene Zeilen landen unter SD_Daten/<session>, damit die HTML sie wie Live-Daten zeichnet.
 SD_BEFEHL_URL = FIREBASE_BASE + "SD_Befehl.json"
 SD_DATEN_URL = FIREBASE_BASE + "SD_Daten/"
-SD_CHUNK = 50  # Zeilen pro Firebase-Anfrage, spart RAM
+SD_CHUNK = 10  # Zeilen pro Firebase-Anfrage, spart RAM (50 lief auf dem ESP32 in Speichermangel)
 
 def sd_patch(url, data):
     res = urequests.request("PATCH", url, json=data, timeout=15)
@@ -222,6 +222,7 @@ def sd_hochladen(name):
 
 def sd_session_von_firebase(session):
     """Schreibt eine komplette Firebase-Session als CSV (FB_<session>.csv) auf die SD-Karte. Gibt die Zeilenzahl zurück."""
+    gc.collect()
     basis = FIREBASE_BASE + "Datenlogger/" + session + ".json"
     res = urequests.get(basis + "?shallow=true", timeout=15)
     vorhanden = res.json()
