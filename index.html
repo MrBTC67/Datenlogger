@@ -4,46 +4,126 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daten Logger V1.1 | Dashboard</title>
+    <script>
+        // Farbschema vor dem ersten Zeichnen setzen: gespeicherte Wahl, sonst Systemeinstellung.
+        (function () {
+            var t = null;
+            try { t = localStorage.getItem('theme'); } catch (e) {}
+            if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1"></script>
     <style>
-        /* Gleiche Oberfläche wie die Wetterstation: dunkel, ruhige Karten, dezente Linien. */
+        /* Premium-Oberfläche: ruhige Glasflächen, feine Linien, großzügige Typografie. Hell und Dunkel über Farb-Tokens. */
         :root {
-            --bg-main: #0b1117;
-            --surface-2: #0f1720;
-            --card-bg: #121b24;
-            --chart-bg: #121b24;
-            --card-border: #1f2d3a;
-            --border-hover: #2c4153;
-            --text-primary: #e6edf3;
-            --text-secondary: #8a9aab;
-            --accent-volt-bg: #0f1720;
-            --color-accent: #4dd0e1;
-            --shadow: none;
-            --shadow-lg: none;
+            color-scheme: dark;
+            --bg-main: #060a10;
+            --bg-glow-a: rgba(56, 189, 248, 0.13);
+            --bg-glow-b: rgba(129, 140, 248, 0.11);
+            --surface-2: rgba(255, 255, 255, 0.035);
+            --card-bg: linear-gradient(165deg, rgba(24, 34, 47, 0.78) 0%, rgba(14, 21, 30, 0.78) 100%);
+            --chart-bg: linear-gradient(165deg, rgba(22, 31, 43, 0.82) 0%, rgba(12, 18, 26, 0.82) 100%);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(255, 255, 255, 0.16);
+            --hairline: rgba(255, 255, 255, 0.06);
+            --text-primary: #eef3f9;
+            --text-secondary: #8c9cb0;
+            --text-muted: #5f6f84;
+            --accent-volt-bg: rgba(255, 255, 255, 0.035);
+            --color-accent: #5ee0f0;
+            --accent-2: #8b9bff;
+            --cold: #60a5fa;
+            --hot: #f87171;
+            --ok: #34d399;
+            --bad: #f87171;
+            --warn-text: #fdba74;
+            --danger-bg: rgba(127, 29, 29, 0.18);
+            --danger-border: rgba(248, 113, 113, 0.35);
+            --danger-text: #fecaca;
+            --btn-active-bg: rgba(94, 224, 240, 0.12);
+            --btn-active-border: rgba(94, 224, 240, 0.55);
+            --chart-grid: rgba(255, 255, 255, 0.05);
+            --chart-tick: #8c9cb0;
+            --chart-label-bg: #18222e;
+            --chart-label-text: #eef3f9;
+            --legend-text: #aab7c8;
+            --shadow: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 24px 48px -24px rgba(0, 0, 0, 0.7);
+            --shadow-lg: 0 1px 0 rgba(255, 255, 255, 0.05) inset, 0 30px 60px -28px rgba(0, 0, 0, 0.75);
+            --font: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        :root[data-theme="light"] {
+            color-scheme: light;
+            --bg-main: #f2f5fa;
+            --bg-glow-a: rgba(14, 165, 233, 0.14);
+            --bg-glow-b: rgba(99, 102, 241, 0.10);
+            --surface-2: rgba(15, 23, 42, 0.035);
+            --card-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.96) 0%, rgba(250, 252, 255, 0.88) 100%);
+            --chart-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 254, 0.92) 100%);
+            --card-border: rgba(15, 23, 42, 0.08);
+            --border-hover: rgba(15, 23, 42, 0.18);
+            --hairline: rgba(15, 23, 42, 0.07);
+            --text-primary: #0d1522;
+            --text-secondary: #566579;
+            --text-muted: #8795a8;
+            --accent-volt-bg: rgba(15, 23, 42, 0.035);
+            --color-accent: #0e7fa3;
+            --accent-2: #4f46e5;
+            --cold: #2563eb;
+            --hot: #dc2626;
+            --ok: #059669;
+            --bad: #dc2626;
+            --warn-text: #c2410c;
+            --danger-bg: rgba(254, 226, 226, 0.7);
+            --danger-border: rgba(220, 38, 38, 0.35);
+            --danger-text: #991b1b;
+            --btn-active-bg: rgba(14, 127, 163, 0.10);
+            --btn-active-border: rgba(14, 127, 163, 0.55);
+            --chart-grid: rgba(15, 23, 42, 0.07);
+            --chart-tick: #566579;
+            --chart-label-bg: #ffffff;
+            --chart-label-text: #0d1522;
+            --legend-text: #3d4b5e;
+            --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 18px 40px -22px rgba(30, 50, 90, 0.28);
+            --shadow-lg: 0 1px 2px rgba(15, 23, 42, 0.05), 0 26px 52px -26px rgba(30, 50, 90, 0.32);
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
+        html { background: var(--bg-main); }
+
         body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-main);
+            font-family: var(--font);
+            font-feature-settings: 'cv11', 'ss01', 'tnum';
+            -webkit-font-smoothing: antialiased;
+            background:
+                radial-gradient(900px 520px at 8% -8%, var(--bg-glow-a), transparent 65%),
+                radial-gradient(800px 480px at 100% 0%, var(--bg-glow-b), transparent 60%),
+                var(--bg-main);
+            background-attachment: fixed;
             color: var(--text-primary);
-            line-height: 1.45;
+            line-height: 1.5;
             margin: 0;
-            padding: 16px;
+            padding: clamp(14px, 3vw, 36px);
             display: flex;
             justify-content: center;
             min-height: 100vh;
+            transition: background-color 0.4s ease, color 0.3s ease;
         }
 
         .container {
             width: 100%;
-            max-width: 1080px;
+            max-width: 1120px;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 12px;
+            gap: 16px;
+            align-content: start;
         }
 
         header {
@@ -51,243 +131,264 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 6px 0 14px 0;
+            gap: 16px;
+            padding: 4px 2px 12px 2px;
         }
+
+        .brand { display: flex; align-items: center; gap: 14px; }
+        .brand-mark {
+            width: 42px; height: 42px; flex: none;
+            display: grid; place-items: center;
+            border-radius: 13px;
+            color: #fff;
+            background: linear-gradient(140deg, #22d3ee 0%, #6366f1 100%);
+            box-shadow: 0 10px 24px -10px rgba(99, 102, 241, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+        }
+        .brand-mark svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
         header h1 {
             margin: 0;
-            font-size: 1.25rem;
+            font-size: 1.35rem;
             font-weight: 700;
-            letter-spacing: 0;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+            display: flex; align-items: center; gap: 10px;
         }
+        .ver {
+            font-size: 0.66rem; font-weight: 700; letter-spacing: 0.08em;
+            padding: 3px 8px; border-radius: 999px;
+            color: var(--color-accent);
+            border: 1px solid var(--btn-active-border);
+            background: var(--btn-active-bg);
+        }
+        .header-sub { font-size: 0.74rem; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.01em; margin-top: 3px; }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: 18px;
-        }
+        .header-left { display: flex; align-items: center; gap: 22px; }
+        .header-right { display: flex; align-items: center; gap: 10px; }
 
         .header-voltage {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            display: flex; align-items: center; gap: 8px;
             color: var(--text-secondary);
-            font-size: 0.75rem;
-            font-weight: 600;
+            font-size: 0.74rem; font-weight: 600;
+            padding: 6px 14px;
+            border: 1px solid var(--card-border);
+            border-radius: 999px;
+            background: var(--surface-2);
         }
+        .header-voltage .battery-container { gap: 8px; }
+        .header-voltage #currVolt { font-size: 0.88rem; }
 
-        .header-voltage .battery-container {
-            gap: 6px;
+        .theme-toggle {
+            width: 40px; height: 40px; flex: none;
+            display: grid; place-items: center;
+            border-radius: 999px;
+            border: 1px solid var(--card-border);
+            background: var(--surface-2);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: border-color 0.2s ease, transform 0.2s ease, background 0.2s ease;
         }
-
-        .header-voltage #currVolt {
-            font-size: 0.9rem;
-        }
+        .theme-toggle:hover { border-color: var(--border-hover); transform: translateY(-1px); }
+        .theme-toggle:focus-visible, .range-btn:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+        .theme-toggle svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+        .theme-toggle .icon-sun { display: none; }
+        :root:not([data-theme="light"]) .theme-toggle .icon-sun { display: block; }
+        :root:not([data-theme="light"]) .theme-toggle .icon-moon { display: none; }
 
         .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.75rem;
-            font-weight: 700;
-            background: transparent;
-            padding: 5px 12px;
+            display: flex; align-items: center; gap: 10px;
+            font-size: 0.74rem; font-weight: 700;
+            background: var(--surface-2);
+            padding: 7px 16px;
             border-radius: 999px;
             border: 1px solid var(--card-border);
             color: var(--text-secondary);
+            letter-spacing: 0.04em;
         }
-
-        .status-copy { display: flex; flex-direction: column; gap: 2px; }
-        .status-age { color: var(--text-secondary); font-size: 0.65rem; font-weight: 500; }
+        .status-copy { display: flex; flex-direction: column; gap: 1px; }
+        .status-age { color: var(--text-secondary); font-size: 0.64rem; font-weight: 500; letter-spacing: 0; }
         .status-next { border-left: 1px solid var(--card-border); padding-left: 12px; margin-left: 4px; min-width: 9.5em; }
 
-        .dot {
-            width: 8px;
-            height: 8px;
-            background: #ef4444;
-            border-radius: 50%;
-        }
-
-        .dot.online {
-            background: #22c55e;
-            box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .dot { width: 9px; height: 9px; background: var(--bad); border-radius: 50%; }
+        .dot.online { background: var(--ok); box-shadow: 0 0 0 4px rgba(52, 211, 153, 0.18), 0 0 14px rgba(52, 211, 153, 0.55); animation: pulse 2.4s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
 
         .card {
+            position: relative;
             background: var(--card-bg);
-            padding: 16px 18px;
-            border-radius: 18px;
+            padding: 20px 22px;
+            border-radius: 22px;
             border: 1px solid var(--card-border);
             display: flex;
             flex-direction: column;
             gap: 6px;
             box-shadow: var(--shadow);
-            transition: border-color 0.2s ease, opacity 0.3s ease;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            transition: border-color 0.25s ease, opacity 0.3s ease, transform 0.25s ease;
         }
         .card:hover { border-color: var(--border-hover); }
         .card.stale { opacity: 0.4; }
-        .abs-row .card.stale { opacity: 1; } /* Absolute Feuchte und Sättigung bleiben immer gut lesbar. */
+        .abs-row .card.stale { opacity: 1; }
         .card.stale .dew-warning, .chart-note.stale { display: none !important; }
 
         .card h3 {
             margin: 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            letter-spacing: 0;
-            text-transform: none;
+            display: flex; align-items: center; gap: 8px;
+            font-size: 0.68rem; font-weight: 600;
+            letter-spacing: 0.12em; text-transform: uppercase;
             color: var(--text-secondary);
         }
 
-        .card-icon {
-            width: 18px;
-            height: 18px;
-            flex: none;
-            stroke: var(--color-accent);
-            fill: none;
-            stroke-width: 2;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
+        .card-icon { width: 17px; height: 17px; flex: none; stroke: var(--color-accent); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-        .val-row {
-            display: flex;
-            align-items: baseline;
-            gap: 4px;
-            margin-top: 4px;
-        }
-
-        .val { font-size: clamp(1.8rem, 3vw, 2.25rem); font-weight: 600; color: var(--text-primary); transition: color 0.3s ease; }
-        /* Temperatur als große Hauptzahl, wie auf der Wetterstation. */
+        .val-row { display: flex; align-items: baseline; gap: 6px; margin-top: 6px; }
+        .val { font-size: clamp(2.1rem, 4vw, 2.9rem); font-weight: 300; letter-spacing: -0.03em; line-height: 1; color: var(--text-primary); transition: color 0.3s ease; }
         .unit { font-size: 0.95rem; color: var(--text-secondary); font-weight: 500; }
-        /* Trendpfeil direkt hinter der Zahl und Einheit, nicht ganz rechts in der Karte. */
-        .trend { font-size: 1.25rem; line-height: 1; margin-left: 4px; }
+        .trend { font-size: 1.3rem; line-height: 1; margin-left: 4px; }
 
-        .dew-warning { display: none; margin-top: 4px; color: #fca5a5; font-size: 0.75rem; font-weight: 700; }
-        .dew-gap-line { color: var(--text-secondary); font-size: 0.8rem; }
-        .dew-gap-line strong { color: var(--text-primary); font-size: 0.9rem; }
-        .abs-label { font-size: 0.9rem; font-weight: 700; }
+        .dew-warning { display: none; margin-top: 4px; color: var(--warn-text); font-size: 0.75rem; font-weight: 700; }
+        .dew-gap-line { color: var(--text-secondary); font-size: 0.82rem; }
+        .dew-gap-line strong { color: var(--text-primary); font-size: 0.92rem; font-weight: 600; }
+        .abs-label { font-size: 0.92rem; font-weight: 600; margin-top: 4px; }
         .gap-bar { position: relative; display: flex; height: 8px; margin: 6px 0 4px; }
         .gap-zone { height: 100%; }
         .gap-red { width: 20%; background: #b91c1c; border-radius: 4px 0 0 4px; }
         .gap-orange { width: 10%; background: #c2410c; }
         .gap-green { width: 70%; background: #166534; border-radius: 0 4px 4px 0; }
-        .gap-marker { position: absolute; top: -3px; left: 0; width: 3px; height: 14px; background: #f8fafc; border-radius: 2px; transform: translateX(-50%); transition: left 0.5s ease; }
-        /* Beschriftung der Abstandsskala (0 bis 5 °C), passend zu den Zonen oben. */
+        .gap-marker { position: absolute; top: -3px; left: 0; width: 3px; height: 14px; background: var(--text-primary); border-radius: 2px; transform: translateX(-50%); transition: left 0.5s ease; }
         .gap-scale { position: relative; height: 14px; margin-bottom: 2px; font-size: 0.68rem; color: var(--text-secondary); }
         .gap-scale span { position: absolute; top: 0; transform: translateX(-50%); white-space: nowrap; }
         .gap-scale span:first-child { transform: none; }
         .gap-scale span:last-child { transform: translateX(-100%); }
         .battery-runtime { color: var(--text-secondary); font-size: 0.7rem; font-weight: 600; }
-        .battery-runtime.low { color: #ef4444; font-weight: 800; }
+        .battery-runtime.low { color: var(--bad); font-weight: 800; }
 
-        /* Aktuelle Werte für Temperatur und Feuchte. */
+        /* Aktuelle Werte: große, ruhige Messwert-Kacheln. */
         .gauge-row {
             grid-column: 1 / -1;
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 16px;
         }
         .gauge-card {
-            background: linear-gradient(160deg, #18242f 0%, #0f1720 100%);
+            position: relative;
+            overflow: hidden;
+            background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 24px;
-            padding: 16px 18px 20px;
-            box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            border-radius: 26px;
+            padding: 22px 22px 24px;
+            box-shadow: var(--shadow-lg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
             min-width: 0;
+            transition: border-color 0.25s ease, transform 0.25s ease;
         }
+        .gauge-card::before {
+            content: ''; position: absolute; inset: 0 0 auto 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--color-accent), transparent);
+            opacity: 0.55;
+        }
+        .gauge-card:hover { border-color: var(--border-hover); transform: translateY(-2px); }
         .gauge-card h3 {
             margin: 0;
-            align-self: center;
-            text-align: center;
-            font-size: 13px;
-            font-weight: 600;
+            align-self: center; text-align: center;
+            font-size: 0.68rem; font-weight: 600;
+            letter-spacing: 0.14em; text-transform: uppercase;
             color: var(--text-secondary);
         }
-        .gauge-minmax { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .minmax-time { margin-top: 6px; text-align: center; color: var(--text-secondary); font-size: 0.7rem; font-weight: 500; }
-        .gauge-digital { font-size: 1.4rem; font-weight: 400; color: var(--text-primary); line-height: 1; }
-        .gauge-digital span { font-size: 0.8rem; color: var(--text-secondary); margin-left: 3px; font-weight: 500; }
-        .abs-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .gauge-minmax { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .minmax-time { margin-top: 2px; text-align: center; color: var(--text-secondary); font-size: 0.72rem; font-weight: 500; }
+        .gauge-digital { font-size: clamp(2.3rem, 5.4vw, 3.5rem); font-weight: 300; letter-spacing: -0.035em; color: var(--text-primary); line-height: 1; font-variant-numeric: tabular-nums; }
+        .gauge-digital span { font-size: 0.42em; color: var(--text-secondary); margin-left: 4px; font-weight: 500; letter-spacing: 0; }
+        .minmax-item .gauge-digital { font-size: clamp(1.7rem, 3.6vw, 2.4rem); }
+        .min-color { color: var(--cold); }
+        .max-color { color: var(--hot); }
+        .abs-row { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
         .abs-row .card { min-width: 0; }
-        .range-bar { grid-column: 1 / -1; display: flex; gap: 6px; justify-content: flex-end; }
-        .range-btn {
-            flex: 1 1 0; max-width: 90px; padding: 7px 4px;
-            background: var(--card-bg); color: var(--text-secondary);
-            border: 1px solid var(--card-border); border-radius: 10px;
-            font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+
+        /* Zeitraum-Schalter als Segment-Steuerung. */
+        .range-bar {
+            grid-column: 1 / -1;
+            display: flex; gap: 4px; justify-content: flex-end;
+            justify-self: end;
+            padding: 4px;
+            border: 1px solid var(--card-border);
+            border-radius: 14px;
+            background: var(--surface-2);
         }
-        .range-btn.active { color: var(--text-primary); border-color: #60a5fa; background: rgba(96, 165, 250, 0.16); }
-        .gap-hint { font-size: 0.7rem; font-weight: 600; min-height: 1em; line-height: 1; margin-top: -4px; }
-        .gauge-reading { display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .trend-arrow { font-size: 1.2rem; font-weight: 800; line-height: 1; color: #94a3b8; }
-        .trend-arrow.up { color: #22c55e; }
-        .trend-arrow.down { color: #ef4444; }
+        .range-btn {
+            flex: 1 1 0; min-width: 62px; padding: 8px 14px;
+            background: transparent; color: var(--text-secondary);
+            border: 1px solid transparent; border-radius: 10px;
+            font: inherit; font-size: 0.78rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+            transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+        }
+        .range-btn:hover { color: var(--text-primary); }
+        .range-btn.active { color: var(--text-primary); border-color: var(--btn-active-border); background: var(--btn-active-bg); }
+        .gap-hint { font-size: 0.72rem; font-weight: 600; min-height: 1em; line-height: 1; margin-top: -4px; letter-spacing: 0.02em; }
+        .gauge-reading { display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .trend-arrow { font-size: 1.4rem; font-weight: 700; line-height: 1; color: var(--text-secondary); }
+        .trend-arrow.up { color: var(--ok); }
+        .trend-arrow.down { color: var(--bad); }
         @media (max-width: 480px) {
-            .gauge-card { padding: 12px 8px 14px; border-radius: 20px; }
+            .gauge-card { padding: 16px 10px 18px; border-radius: 20px; }
         }
 
-        /* Panels: Verlauf, Diagramm und Bedienung als Karten wie auf der Wetterstation. */
+        /* Panels: Verlauf, Diagramm und Bedienung. */
         .insights-panel {
             grid-column: span 4;
             background: var(--card-bg);
             border: 1px solid var(--card-border);
-            border-radius: 18px;
-            padding: 18px 20px;
+            border-radius: 22px;
+            padding: 22px 24px;
             box-shadow: var(--shadow);
         }
-        .insights-panel h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; color: var(--text-primary); letter-spacing: 0; }
-        .insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-        .insight-item { min-width: 0; padding: 14px; border: 1px solid var(--card-border); border-radius: 14px; background: var(--surface-2); }
+        .insights-panel h2 { margin: 0 0 14px; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); letter-spacing: -0.01em; }
+        .insight-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .insight-item { min-width: 0; padding: 16px; border: 1px solid var(--card-border); border-radius: 16px; background: var(--surface-2); }
         .insight-wide { grid-column: 1 / -1; }
         .insight-label { color: var(--text-secondary); font-size: 0.75rem; font-weight: 600; }
         .insight-value { margin-top: 7px; font-size: clamp(1.15rem, 2.4vw, 1.55rem); font-weight: 600; color: var(--text-primary); }
         .insight-detail { margin-top: 5px; color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; }
 
         .delete-group {
-            border: 1px solid rgba(239, 68, 68, 0.45);
-            background: rgba(127, 29, 29, 0.16);
-            border-radius: 14px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            border: 1px solid var(--danger-border);
+            background: var(--danger-bg);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex; flex-direction: column; gap: 10px;
         }
-        .delete-group p { margin: 0; color: #fecaca; font-size: 0.8rem; line-height: 1.45; }
+        .delete-group p { margin: 0; color: var(--danger-text); font-size: 0.8rem; line-height: 1.45; }
         .danger-button {
-            background: #7f1d1d;
-            color: #fecaca;
-            border: 1px solid #ef4444;
-            padding: 11px 14px;
-            border-radius: 10px;
-            font-size: 0.85rem;
-            font-weight: 700;
+            background: transparent;
+            color: var(--danger-text);
+            border: 1px solid var(--danger-border);
+            padding: 11px 16px;
+            border-radius: 12px;
+            font: inherit; font-size: 0.85rem; font-weight: 600;
             cursor: pointer;
+            transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
         }
-        .danger-button:hover { background: #991b1b; }
-        .danger-button:focus-visible, select:focus-visible { outline: 3px solid #fca5a5; outline-offset: 2px; }
+        .danger-button:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+        .danger-button:focus-visible, select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
         .chart-wrapper {
             grid-column: span 4;
             background: var(--chart-bg);
-            padding: 18px 20px;
-            border-radius: 18px;
+            padding: 22px 24px;
+            border-radius: 26px;
             border: 1px solid var(--card-border);
-            height: 390px;
-            box-shadow: var(--shadow);
+            height: 420px;
+            box-shadow: var(--shadow-lg);
         }
         .chart-note {
             grid-column: span 4;
             margin: -6px 4px 0;
-            color: #fdba74;
+            color: var(--warn-text);
             font-size: 0.85rem;
             font-weight: 600;
             text-align: center;
@@ -295,35 +396,31 @@
 
         .controls {
             grid-column: span 4;
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
+            display: flex; flex-direction: column; gap: 18px;
             background: var(--card-bg);
-            padding: 18px 20px;
-            border-radius: 18px;
+            padding: 22px 24px;
+            border-radius: 22px;
             border: 1px solid var(--card-border);
             box-shadow: var(--shadow-lg);
         }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        .system-status { font-size: 0.95rem; font-weight: 600; padding: 11px 14px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--surface-2); }
 
         label {
             font-weight: 600;
-            font-size: 0.75rem;
+            font-size: 0.68rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
             color: var(--text-secondary);
-            padding-left: 4px;
+            padding-left: 2px;
         }
 
         select {
-            background: var(--surface-2);
+            background-color: var(--surface-2);
             color: var(--text-primary);
             border: 1px solid var(--card-border);
             padding: 12px 14px;
-            border-radius: 10px;
+            border-radius: 12px;
             font-family: inherit;
             font-size: 15px;
             font-weight: 600;
@@ -334,53 +431,27 @@
             background-repeat: no-repeat;
             background-position: right 12px center;
             background-size: 18px;
+            transition: border-color 0.2s ease;
         }
         select:hover { border-color: var(--color-accent); }
+        select option { background: var(--bg-main); color: var(--text-primary); }
 
         .volt-display {
             background: var(--accent-volt-bg);
             border: 1px solid var(--card-border);
-            padding: 16px;
-            border-radius: 14px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 16px; border-radius: 14px;
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        .battery-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .battery-container { display: flex; align-items: center; gap: 10px; }
+        .battery-icon { width: 34px; height: 17px; border: 2px solid var(--text-muted); border-radius: 4px; position: relative; padding: 1px; }
+        .battery-icon::after { content: ''; position: absolute; right: -5px; top: 3px; width: 3px; height: 7px; background: var(--text-muted); border-radius: 0 2px 2px 0; }
+        .battery-level { height: 100%; width: 0%; background: var(--ok); border-radius: 2px; transition: width 0.5s ease, background-color 0.5s ease; }
 
-        .battery-icon {
-            width: 35px;
-            height: 18px;
-            border: 2px solid #64748b;
-            border-radius: 3px;
-            position: relative;
-            padding: 1px;
-        }
-        .battery-icon::after {
-            content: '';
-            position: absolute;
-            right: -5px;
-            top: 3px;
-            width: 3px;
-            height: 8px;
-            background: #64748b;
-            border-radius: 0 2px 2px 0;
-        }
-        .battery-level {
-            height: 100%;
-            width: 0%;
-            background: #22c55e;
-            border-radius: 1px;
-            transition: width 0.5s ease, background-color 0.5s ease;
-        }
-
-        #currVolt { font-weight: 700; font-size: 1.2rem; transition: color 0.3s ease; }
+        #currVolt { font-weight: 700; font-size: 1.1rem; transition: color 0.3s ease; }
         .battery-percent { min-width: 3.2em; color: var(--text-primary); font-size: 0.8rem; font-weight: 700; }
+
+        .footer { grid-column: 1 / -1; text-align: center; color: var(--text-muted); font-size: 0.72rem; letter-spacing: 0.06em; padding: 10px 0 4px; }
 
         @media (min-width: 801px) {
             .controls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: end; }
@@ -388,27 +459,33 @@
         }
 
         @media (max-width: 800px) {
-            .container { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .container { grid-template-columns: repeat(2, 1fr); gap: 12px; }
             header, .chart-wrapper, .chart-note, .controls, .insights-panel { grid-column: span 2; }
             header { flex-wrap: wrap; gap: 12px; }
-            .header-left { flex-wrap: wrap; gap: 10px 16px; }
-            .chart-wrapper { height: 340px; padding: 14px; }
+            .header-left { flex-wrap: wrap; gap: 12px 16px; }
+            .chart-wrapper { height: 350px; padding: 16px; border-radius: 22px; }
+            .range-bar { justify-self: stretch; }
         }
 
         @media (max-width: 480px) {
             body { padding: 10px; }
-            .container { gap: 8px; }
-            header h1 { font-size: 1.05rem; }
+            .container { gap: 10px; }
+            header h1 { font-size: 1.1rem; }
+            .brand-mark { width: 36px; height: 36px; border-radius: 11px; }
             .header-voltage { font-size: 0.72rem; }
-            .card { padding: 13px 12px; border-radius: 15px; }
-            .val { font-size: 1.65rem; }
-            .trend { font-size: 1.7rem; }
-            .card h3 { font-size: 0.75rem; }
+            .card { padding: 15px 14px; border-radius: 18px; }
+            .val { font-size: 2rem; }
+            .trend { font-size: 1.5rem; }
             .dew-warning { font-size: 0.7rem; }
-            .chart-wrapper { height: 300px; }
-            .controls { padding: 14px; gap: 13px; }
+            .chart-wrapper { height: 310px; }
+            .controls { padding: 16px; gap: 14px; }
             .insight-grid { gap: 8px; }
-            .insights-panel { padding: 14px; }
+            .insights-panel { padding: 16px; }
+            .range-btn { min-width: 0; padding: 8px 4px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
         }
     </style>
 </head>
@@ -417,7 +494,13 @@
 <div class="container">
     <header>
         <div class="header-left">
-            <h1>Daten Logger <span style="color: #3b82f6;">V1.1</span></h1>
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+                <div>
+                    <h1>Daten Logger <span class="ver">V1.1</span></h1>
+                    <div class="header-sub">Temperatur · Feuchte · Taupunkt</div>
+                </div>
+            </div>
             <div class="header-voltage" aria-label="Akkuspannung">
                 <span>Akku:</span>
                 <div class="battery-container">
@@ -430,9 +513,15 @@
                 </div>
             </div>
         </div>
-        <div class="status-indicator">
-            <div id="statusDot" class="dot"></div>
-            <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
+        <div class="header-right">
+            <div class="status-indicator">
+                <div id="statusDot" class="dot"></div>
+                <div class="status-copy"><span id="statusText">...</span><span id="dataAge" class="status-age">Keine Messung</span></div>
+            </div>
+            <button id="themeToggle" class="theme-toggle" type="button" aria-label="Farbschema umschalten" title="Hell / Dunkel">
+                <svg class="icon-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
+            </button>
         </div>
     </header>
 
@@ -454,12 +543,12 @@
         <div class="gauge-minmax">
             <div class="gauge-card minmax-item">
                 <h3>Heute Min</h3>
-                <div class="gauge-reading"><div id="minValue" class="gauge-digital" style="color:#60a5fa">--<span>°C</span></div></div>
+                <div class="gauge-reading"><div id="minValue" class="gauge-digital min-color">--<span>°C</span></div></div>
                 <div id="minTime" class="minmax-time">&nbsp;</div>
             </div>
             <div class="gauge-card minmax-item">
                 <h3>Heute Max</h3>
-                <div class="gauge-reading"><div id="maxValue" class="gauge-digital" style="color:#ef4444">--<span>°C</span></div></div>
+                <div class="gauge-reading"><div id="maxValue" class="gauge-digital max-color">--<span>°C</span></div></div>
                 <div id="maxTime" class="minmax-time">&nbsp;</div>
             </div>
         </div>
@@ -533,6 +622,7 @@
             <button id="deleteSessionBtn" class="danger-button" type="button" onclick="deleteSelectedSession()">Session dauerhaft löschen</button>
         </div>
     </div>
+    <div class="footer">DATENLOGGER · LIVE AUS FIREBASE</div>
 </div>
 
 <script>
@@ -590,7 +680,7 @@
                 if (point.temp <= FROST_WARN_TEMP && point.dew <= 0) {
                     // Reifgefahr: kühles Eisblau statt Orange/Rot, damit Reif von Tau unterscheidbar ist.
                     const frostAlpha = 0.16 + (0.14 * (1.5 - gap) / 1.5);
-                    zoneColor = `rgba(186, 230, 253, ${frostAlpha.toFixed(3)})`;
+                    zoneColor = `rgba(56, 189, 248, ${frostAlpha.toFixed(3)})`;
                 } else if (gap <= 1) {
                     // Kritische Taupunktnähe: dezentes Rot, damit die Kurve sichtbar bleibt.
                     // Volle Deckkraft, damit die rote Zone auf dem dunklen Hintergrund klar als Warnung erkennbar ist.
@@ -655,6 +745,8 @@
         if (v > 3.7) return '#f97316';
         return '#ef4444'; 
     }
+
+    const themeVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 
     const chart = new Chart(ctx, {
         type: 'line',
@@ -736,7 +828,7 @@
             },
             plugins: { 
                 tooltip: { enabled: false },
-                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = item.datasetIndex === 1 ? '#cbd5e1' : '#9ca3af';
+                legend: { position: 'top', align: 'center', onClick: (event, legendItem, legend) => { const index = legendItem.datasetIndex; const chart = legend.chart; chart.setDatasetVisibility(index, !chart.isDatasetVisible(index)); chart.update(); }, labels: { boxWidth: 28, boxHeight: 3, padding: 16, font: { weight: '600', size: 11 }, generateLabels: chart => Chart.defaults.plugins.legend.labels.generateLabels(chart).map(item => { item.fontColor = themeVar('--legend-text');
                     if (item.datasetIndex === 1) item.lineDash = [6, 4]; return item; }) } },
                 annotation: { annotations: {
                     frostZone: { type: 'box', yMin: -40, yMax: 2, backgroundColor: 'rgba(96, 165, 250, 0.10)', borderWidth: 0 },
@@ -750,6 +842,25 @@
                 }}
             }
         }
+    });
+
+    // Farbschema: Diagrammfarben aus den CSS-Tokens holen und beim Umschalten neu setzen.
+    function applyChartTheme() {
+        const o = chart.options, a = o.plugins.annotation.annotations;
+        o.scales.y.grid.color = themeVar('--chart-grid');
+        o.scales.y.ticks.color = themeVar('--chart-tick');
+        o.scales.x.ticks.color = themeVar('--chart-tick');
+        ['frostLine', 'minLine', 'maxLine'].forEach(k => { a[k].label.backgroundColor = themeVar('--chart-label-bg'); });
+        a.minLine.label.color = a.maxLine.label.color = themeVar('--chart-label-text');
+        a.frostLine.label.color = themeVar('--cold');
+        chart.update('none');
+    }
+    applyChartTheme();
+    document.getElementById('themeToggle').addEventListener('click', () => {
+        const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next);
+        try { localStorage.setItem('theme', next); } catch (e) {}
+        applyChartTheme();
     });
 
     // --- Aktuelle Werte für Temperatur und Feuchte (Zahlenanzeige) ---
@@ -1047,12 +1158,12 @@
                 const absMax = calcAbsHum(curT, 100);
                 let absText, absColor;
                 if (curH < 30) { absText = "Sehr trocken"; absColor = "#d97706"; }
-                else if (curH < 40) { absText = "Trocken"; absColor = "#eab308"; }
+                else if (curH < 40) { absText = "Trocken"; absColor = "#ca8a04"; }
                 else if (curH < 60) { absText = "Angenehm"; absColor = "#22c55e"; }
                 else if (curH < 70) { absText = "Leicht feucht"; absColor = "#22c55e"; }
                 else if (curH < 85) { absText = "Feucht"; absColor = "#3b82f6"; }
                 else if (curH < 95) { absText = "Sehr feucht"; absColor = "#60a5fa"; }
-                else { absText = "Fast gesättigt"; absColor = "#93c5fd"; }
+                else { absText = "Fast gesättigt"; absColor = "#60a5fa"; }
                 if (absHums[idx] >= 15 && curT >= 20) { absText += " · schwül"; absColor = "#f97316"; }
                 const absLabelEl = document.getElementById('absLabel');
                 absLabelEl.textContent = absText;
@@ -1070,7 +1181,7 @@
                 const dewGap = curT - curDP;
                 let dewColor = '#94a3b8', dewHint = '';
                 if (Number.isFinite(dewGap) && dewGap >= 0 && dewGap <= 1.5) {
-                    if (curT <= FROST_WARN_TEMP && curDP <= 0) { dewColor = '#bae6fd'; dewHint = ' · Reifgefahr'; }
+                    if (curT <= FROST_WARN_TEMP && curDP <= 0) { dewColor = '#38bdf8'; dewHint = ' · Reifgefahr'; }
                     else if (dewGap <= 1) { dewColor = '#ef4444'; dewHint = ' · Nebelgefahr'; }
                     else { dewColor = '#f97316'; dewHint = ' · Nebel möglich'; }
                 }
